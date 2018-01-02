@@ -1,0 +1,3 @@
+If on home computer, all libraries and the SDK required are on the E drive.
+
+If else where, install the SDK, GLM and GLFW then follow the setup page on Vulkan Tutorial.
