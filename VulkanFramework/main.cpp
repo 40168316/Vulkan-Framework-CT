@@ -133,6 +133,8 @@ private:
 	// Member variables which store the format and extent chosen for the swap chain images 
 	VkFormat swapChainImageFormat;
 	VkExtent2D swapChainExtent;
+	// Vector which is used to store the framebuffers and the attachments - is a collection of buffers that can be used as the destination for rendering (attachtment of swap chain colour attactment)
+	std::vector<VkFramebuffer> swapChainFramebuffers;
 	// Vector which stores the information regarding the swap chain image views - creates a basic image view for every image in the swap chain
 	std::vector<VkImageView> swapChainImageViews;
 	// Member variable which stores the pipeline state - stores different uniform values which can be changed at drawing time to alter the behaviour of shaders without recreation
@@ -141,6 +143,13 @@ private:
 	VkRenderPass renderPass;
 	// Member variable which stores thge graphics pipeline
 	VkPipeline graphicsPipeline;
+	// Member variable which manage tge memory that is used to store the buffers and command buffers are allocated from them
+	VkCommandPool commandPool;
+	// Vector of command buffers that are executed by submitting them on one of the device queues
+	std::vector<VkCommandBuffer> commandBuffers;
+	// Semaphores synchronise operations within or across command queues - check if the image is ready for rendering and signal that rendering has finished. 
+	VkSemaphore imageAvailableSemaphore;
+	VkSemaphore renderFinishedSemaphore;
 
 	// Method which initiates various Vulkan calls 
 	void initVulkan() 
@@ -154,6 +163,24 @@ private:
 		createImageViews();
 		createRenderPass();
 		createGraphicsPipeline();
+		createFramebuffers();
+		createCommandPool();
+		createCommandBuffers();
+		createSemaphores();
+	}
+
+	// Function which creates the required semaphores - synchronise operations within or across command queues - check if the image is ready for rendering and signal that rendering has finished. 
+	void createSemaphores() 
+	{
+		// Struct which specifies the semaphore nfo/type
+		VkSemaphoreCreateInfo semaphoreInfo = {};
+		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+		// Initiate the two semaphores - if not successful show an error
+		if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphore) != VK_SUCCESS || vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphore) != VK_SUCCESS)
+		{
+			throw std::runtime_error("failed to create semaphores!");
+		}
 	}
 
 	// Function which stores additinal pipeline information such as the framebuffer attachtments - ie how many colour and dpeth buffers there will be 
@@ -531,7 +558,51 @@ private:
 		while (!glfwWindowShouldClose(window))
 		{
 			glfwPollEvents();
+			drawFrame();
 		}
+	}
+
+	// Method which deals with acquiring an image from the swap chain, execute the command buffer and returns the image to the swap chain for presentation
+	void drawFrame() 
+	{
+		uint32_t imageIndex;
+		vkAcquireNextImageKHR(device, swapChain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+
+		VkSubmitInfo submitInfo = {};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+		VkSemaphore waitSemaphores[] = { imageAvailableSemaphore };
+		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = waitSemaphores;
+		submitInfo.pWaitDstStageMask = waitStages;
+
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
+
+		VkSemaphore signalSemaphores[] = { renderFinishedSemaphore };
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = signalSemaphores;
+
+		if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
+			throw std::runtime_error("failed to submit draw command buffer!");
+		}
+
+		VkPresentInfoKHR presentInfo = {};
+		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+
+		presentInfo.waitSemaphoreCount = 1;
+		presentInfo.pWaitSemaphores = signalSemaphores;
+
+		VkSwapchainKHR swapChains[] = { swapChain };
+		presentInfo.swapchainCount = 1;
+		presentInfo.pSwapchains = swapChains;
+
+		presentInfo.pImageIndices = &imageIndex;
+
+		vkQueuePresentKHR(presentQueue, &presentInfo);
+
+		vkQueueWaitIdle(presentQueue);
 	}
 
 	// Method which initialises the GLFW window
@@ -550,6 +621,16 @@ private:
 	// Once the window is closed, deallocation of resources occurs 
 	void cleanup() 
 	{
+		// Destroy the semaphore
+		vkDestroySemaphore(device, renderFinishedSemaphore, nullptr);
+		vkDestroySemaphore(device, imageAvailableSemaphore, nullptr);
+		// Destroy the commandpool
+		vkDestroyCommandPool(device, commandPool, nullptr);
+		// Destory the framebuffer 
+		for (auto framebuffer : swapChainFramebuffers) 
+		{
+			vkDestroyFramebuffer(device, framebuffer, nullptr);
+		}
 		// Destroy the graphics pipeline 
 		vkDestroyPipeline(device, graphicsPipeline, nullptr);
 		// Destroy the pipeline
@@ -1014,6 +1095,132 @@ private:
 
 		// Return complete shader module 
 		return shaderModule;
+	}
+
+	// Methid which stores the framebuffers and attachments - is a collection of buffers that can be used as the destination for rendering (attachtment of swap chain colour attactment)
+	void createFramebuffers() 
+	{
+		// Resize the container to hold all of the framebuffers
+		swapChainFramebuffers.resize(swapChainImageViews.size());
+
+		// Iterate through the image views and create framebuffers from them
+		for (size_t i = 0; i < swapChainImageViews.size(); i++) 
+		{
+			VkImageView attachments[] = 
+			{
+				swapChainImageViews[i]
+			};
+
+			// Create a struct which stores the info of the framebuffer
+			VkFramebufferCreateInfo framebufferInfo = {};
+			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+			// Specify the render pass the framebuffer requires to be compatible 
+			framebufferInfo.renderPass = renderPass;
+			// Set attachment count as one as there is only the coulour attachment
+			framebufferInfo.attachmentCount = 1;
+			// Specify the attachments the framebuffer requires to be compatible
+			framebufferInfo.pAttachments = attachments;
+			// Set the width and height based on the swap chain width and height
+			framebufferInfo.width = swapChainExtent.width;
+			framebufferInfo.height = swapChainExtent.height;
+			// Set to one - refers to the number of layers in image arrays
+			framebufferInfo.layers = 1;
+
+			// Initialise the framebuffer - if not successful throw an error 
+			if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS) 
+			{
+				throw std::runtime_error("failed to create framebuffer!");
+			}
+		}
+	}
+
+	// Function which manage the memory that is used to store the buffers and command buffers are allocated from them
+	void createCommandPool() 
+	{
+		QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice);
+
+		// Create a struct which stores the command pool information
+		VkCommandPoolCreateInfo poolInfo = {};
+		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		// Select a graphics family queue for drawing commands 
+		poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
+		poolInfo.flags = 0; // Optional
+
+		// Initalise the command pool - if not successful then throw error 
+		if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) 
+		{
+			throw std::runtime_error("failed to create command pool!");
+		}
+	}
+
+	// Function which creates command buffers which stores all the operation you want to perform 
+	void createCommandBuffers() 
+	{
+		// Resuze the command buffer based on the size of the swapchain buffer
+		commandBuffers.resize(swapChainFramebuffers.size());
+
+		// Struct which specifies the command pool and the number of buffers to allocate
+		VkCommandBufferAllocateInfo allocInfo = {};
+		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		allocInfo.commandPool = commandPool;
+		// Primary instead of secondary - can be submitted to a queue for execution, but cannot be called from other command buffers.
+		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; // Level parameter specifies if the allocated command buffers are primary or secondary command buffers.
+		allocInfo.commandBufferCount = (uint32_t)commandBuffers.size();
+
+		// Initiate the allocate command buffers - if not successful then throw an error 
+		if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data()) != VK_SUCCESS) 
+		{
+			throw std::runtime_error("failed to allocate command buffers!");
+		}
+
+		// Begin recording the command buffer
+		for (size_t i = 0; i < commandBuffers.size(); i++) 
+		{
+			// Struct that specifies some details about the usage of this specific command buffer.
+			VkCommandBufferBeginInfo beginInfo = {};
+			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+			// VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT - The command buffer can be resubmitted while it is also already pending execution.
+			beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT; // Flags parameter specifies how we're going to use the command buffer
+
+			// Initiate and begin the command buffer
+			vkBeginCommandBuffer(commandBuffers[i], &beginInfo);
+
+			// To draw, start by creating a render pass 
+			VkRenderPassBeginInfo renderPassInfo = {};
+			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+			// Set the render pass to the preset render pass
+			renderPassInfo.renderPass = renderPass;
+			// Create a framebuffer for each swap chain image that specifies it as colour attachment 
+			renderPassInfo.framebuffer = swapChainFramebuffers[i];
+			// Define the size of the render area - this defines where shader loads and stores will take place 
+			renderPassInfo.renderArea.offset = { 0, 0 };
+			renderPassInfo.renderArea.extent = swapChainExtent;
+
+			// Struct which defines the load operation for the colour attachment, defined as black - MIGHT BE BACKGROUND COLOUR
+			VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+			renderPassInfo.clearValueCount = 1;
+			renderPassInfo.pClearValues = &clearColor;
+
+			// Begin the render pass using the struct created above 
+			// Command buffer to record the command to, render pass struct, controls how the drawing commands within the render pass will be provided - INLINE
+			vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+			// Bind the graphics pipeline 
+			// Command buffer to record the command to, pipeline object is a graphics pipeline, 
+			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+			// Draw the command buffers (vertex count, instanceCount, firstVertex, firstInstance)
+			vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+
+			// End the render pass 
+			vkCmdEndRenderPass(commandBuffers[i]);
+
+			// Finish recording the command buffer - if not successful throw error 
+			if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS) 
+			{
+				throw std::runtime_error("failed to record command buffer!");
+			}
+		}
 	}
 };
 
