@@ -75,17 +75,6 @@ struct QueueFamilyIndices
 	}
 };
 
-// A struct that returns the indices of the queue families that satisfy certain desired properties
-struct QueueFamilyIndices 
-{
-	int graphicsFamily = -1;
-
-	bool isComplete()
-	{
-		return graphicsFamily >= 0;
-	}
-};
-
 // Struct which stores details of swap chain support - query the physical device for some details 
 struct SwapChainSupportDetails 
 {
@@ -216,6 +205,18 @@ private:
 		// Include the colour attachment struct above 
 		subpass.pColorAttachments = &colorAttachmentRef;
 
+		// Struct which stores information about subpass dependecies - where a check is made to make sure the image is avaiable for the render pass
+		VkSubpassDependency dependency = {};
+		// Specify the indices of the dependency and the depend subpass 
+		dependency.srcSubpass = VK_SUBPASS_EXTERNAL; // External refers to the implicit subpass before or after the render pass
+		dependency.dstSubpass = 0;
+		// Specify the operations to wait on and the stages in which these operations occur - need to wait for the swap chain to finish reading the image before it can be accessed
+		dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; 
+		dependency.srcAccessMask = 0;
+		// The operations that should wait on this are in the color attachment stage and involve the reading and writing of the color attachment
+		dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
 		// Render pass struct which details the render pass information and includes other structs 
 		VkRenderPassCreateInfo renderPassInfo = {};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -225,6 +226,9 @@ private:
 		renderPassInfo.subpassCount = 1;
 		// Include the sub pass struct 
 		renderPassInfo.pSubpasses = &subpass;
+		// Connect the render pass to the depenency struct above
+		renderPassInfo.dependencyCount = 1;
+		renderPassInfo.pDependencies = &dependency;
 
 		// Create the render pass - if not successful throw an error 
 		if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) 
@@ -560,48 +564,59 @@ private:
 			glfwPollEvents();
 			drawFrame();
 		}
+
+		// Wait for logical device to finish before destorying 
+		vkDeviceWaitIdle(device);
 	}
 
 	// Method which deals with acquiring an image from the swap chain, execute the command buffer and returns the image to the swap chain for presentation
 	void drawFrame() 
 	{
 		uint32_t imageIndex;
+		// Acquire the next image from the swap chain using the logical device, swaphcain, timeout in nanoseconds, the semaphore, handle and reference to image index
 		vkAcquireNextImageKHR(device, swapChain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 
+		// Struct which is used for queue submission and synchronization is configured through parameters
 		VkSubmitInfo submitInfo = {};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-		VkSemaphore waitSemaphores[] = { imageAvailableSemaphore };
-		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-		submitInfo.waitSemaphoreCount = 1;
+		// Semaphore information part of submit info struct
+		VkSemaphore waitSemaphores[] = { imageAvailableSemaphore }; // Wait onbefore execution begins 
+		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT }; // Write the colours to the attachment
+		submitInfo.waitSemaphoreCount = 1; 
 		submitInfo.pWaitSemaphores = waitSemaphores;
 		submitInfo.pWaitDstStageMask = waitStages;
 
+		// Specify which command buffers to actually submit for execution
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
 
+		// Specify which semaphores to signal once the command buffers have finished execuion
 		VkSemaphore signalSemaphores[] = { renderFinishedSemaphore };
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = signalSemaphores;
 
-		if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
+		// Submit the command buffer to the graphics queue - if not successful throw an error 
+		if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) 
+		{
 			throw std::runtime_error("failed to submit draw command buffer!");
 		}
 
+		// Struct which deals with submitting the results back to the swap chain to have it eventually show up on the screen 
 		VkPresentInfoKHR presentInfo = {};
 		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
+		// Specify which semaphores to wait on before presentation can happen
 		presentInfo.waitSemaphoreCount = 1;
 		presentInfo.pWaitSemaphores = signalSemaphores;
-
+		// Specify the swap chains to present images to and the index of the image for each swap chain
 		VkSwapchainKHR swapChains[] = { swapChain };
 		presentInfo.swapchainCount = 1;
 		presentInfo.pSwapchains = swapChains;
-
 		presentInfo.pImageIndices = &imageIndex;
 
+		// Sumbits the request to present an image to the swap chain 
 		vkQueuePresentKHR(presentQueue, &presentInfo);
 
+		// Deal with the memory leak - this is due to the validation layers expecting the application to sync with the GPU which doesnt always happen 
 		vkQueueWaitIdle(presentQueue);
 	}
 
