@@ -1211,8 +1211,8 @@ private:
 			renderPassInfo.renderArea.offset = { 0, 0 };
 			renderPassInfo.renderArea.extent = swapChainExtent;
 
-			// Struct which defines the load operation for the colour attachment, defined as black - MIGHT BE BACKGROUND COLOUR
-			VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+			// Struct which defines the load operation for the colour attachment, defined as black - BACKGROUND COLOUR
+			VkClearValue clearColor = { 0.2f, 0.2f, 0.2f, 1.0f };
 			renderPassInfo.clearValueCount = 1;
 			renderPassInfo.pClearValues = &clearColor;
 
