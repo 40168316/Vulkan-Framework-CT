@@ -14,6 +14,8 @@
 #include <set>
 #include <algorithm> 
 #include <fstream>
+#include <glm/glm.hpp>
+#include <array>
 
 // Width and Heigh of the window - used throught the application 
 const int WIDTH = 800;
@@ -81,6 +83,52 @@ struct SwapChainSupportDetails
 	VkSurfaceCapabilitiesKHR capabilities;
 	std::vector<VkSurfaceFormatKHR> formats;
 	std::vector<VkPresentModeKHR> presentModes;
+};
+
+// Struct called vertex which stores the information for the vertex shader
+struct Vertex 
+{
+	glm::vec2 pos;
+	glm::vec3 color;
+
+	// Tell Vulkan how to pass this data format to the vertex shader - bind the information
+	static VkVertexInputBindingDescription getBindingDescription() 
+	{
+		// Struct which contains information regarding how the data is sumbitted to the GPU and vertex shader
+		VkVertexInputBindingDescription bindingDescription = {};
+		bindingDescription.binding = 0; // Specifies the index of the binding in the array of bindings
+		bindingDescription.stride = sizeof(Vertex); // Specifies the number of bytes from one entry to the next
+		bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX; // Specifies the move to the next data entry after each vertex
+
+		return bindingDescription;
+	}
+
+	// Tell Vulkan the attribute description 
+	static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions()
+	{
+		std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions = {};
+
+		// Two different attribute description, one for position
+		attributeDescriptions[0].binding = 0; // Binding parameter specifies from which binding the per-vertex data comes
+		attributeDescriptions[0].location = 0; // References the location directive of the input in the vertex shader.
+		attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT; // Describes the type of data for the attribute - vec2
+		attributeDescriptions[0].offset = offsetof(Vertex, pos);
+		// The other for colour 
+		attributeDescriptions[1].binding = 0;
+		attributeDescriptions[1].location = 1;
+		attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT; // vec3
+		attributeDescriptions[1].offset = offsetof(Vertex, color);
+
+		return attributeDescriptions;
+	}
+};
+
+// Position, Colour - data now as one part of vertices
+const std::vector<Vertex> vertices =
+{
+	{ { 0.0f, -0.5f },{ 0.0f, 1.0f, 0.0f } },
+	{ { 0.5f, 0.5f },{ 0.0f, 0.0f, 1.0f } },
+	{ { -0.5f, 0.5f },{ 1.0f, 0.0f, 0.0f } }
 };
 
 // Class which contains the Vulkan Objects
@@ -273,6 +321,56 @@ private:
 				throw std::runtime_error("failed to create image views!");
 			}
 		}
+	}
+
+	// Method which recreates the swap chain - deals with changes to the window such as window resizing
+	void recreateSwapChain() 
+	{
+		// Call device wait idle to make sure we dont access the logical device until it has stopped doing something - if this check is in place the Swap Chain can be corrupted. 
+		vkDeviceWaitIdle(device);
+
+		// Before Swap Chain can be recreate old version has to be cleaned up
+		cleanupSwapChain();
+
+		// Recreate the Swap Chain itself 
+		createSwapChain();
+		// Recreate the image view because they are based difrectly on the swap chain images
+		createImageViews();
+		// The render pass is recreated because it depends on the format of the swap chain images - rare but check just incase
+		createRenderPass();
+		// Recreate the graphics pipeline due to the fact the viewport and scissor size may have been changed hence rebuilidng is required 
+		createGraphicsPipeline();
+		// Recreate all buffers as they are based on the swap chain images 
+		createFramebuffers();
+		createCommandBuffers();
+	}
+
+	// Clean Up old version of Swap Chain
+	void cleanupSwapChain() 
+	{
+		// Destroy all the framebuffers associated with the Swap Chain 
+		for (size_t i = 0; i < swapChainFramebuffers.size(); i++) 
+		{
+			vkDestroyFramebuffer(device, swapChainFramebuffers[i], nullptr);
+		}
+
+		// Free all the Command Buffers to the Command Pool associated with the Swap Chain
+		vkFreeCommandBuffers(device, commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+		
+		// Destroy the Graphics Pipeline and all information required for the pipeline - reverse order from how it was built
+		vkDestroyPipeline(device, graphicsPipeline, nullptr);
+		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+		vkDestroyRenderPass(device, renderPass, nullptr);
+
+		// For all the Swap Cahin Image Views
+		for (size_t i = 0; i < swapChainImageViews.size(); i++) 
+		{
+			// Destroy
+			vkDestroyImageView(device, swapChainImageViews[i], nullptr);
+		}
+
+		// Destroy the Swap Chain Object
+		vkDestroySwapchainKHR(device, swapChain, nullptr);
 	}
 
 	// Create the swapchain by bring together the surface format, present mode and extent together.
@@ -574,7 +672,20 @@ private:
 	{
 		uint32_t imageIndex;
 		// Acquire the next image from the swap chain using the logical device, swaphcain, timeout in nanoseconds, the semaphore, handle and reference to image index
-		vkAcquireNextImageKHR(device, swapChain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+		VkResult result =  vkAcquireNextImageKHR(device, swapChain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+
+		// Check if the Swap Chain is no longer compatibile - out of date 
+		if (result == VK_ERROR_OUT_OF_DATE_KHR) 
+		{
+			// Create and update
+			recreateSwapChain();
+			return;
+		}
+		// Else of the The swap chain can still be used to successfully present to the surface, but the surface properties are no longer matched exactly - cause by resizing the image sometimes
+		else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+		{
+			throw std::runtime_error("failed to acquire swap chain image!");
+		}
 
 		// Struct which is used for queue submission and synchronization is configured through parameters
 		VkSubmitInfo submitInfo = {};
@@ -614,7 +725,16 @@ private:
 		presentInfo.pImageIndices = &imageIndex;
 
 		// Sumbits the request to present an image to the swap chain 
-		vkQueuePresentKHR(presentQueue, &presentInfo);
+		result = vkQueuePresentKHR(presentQueue, &presentInfo);
+
+		// If the result of the request made above is invalid or no longer compatible - out of date - then recreate the swap chain 
+		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) 
+		{
+			recreateSwapChain();
+		}
+		else if (result != VK_SUCCESS) {
+			throw std::runtime_error("failed to present swap chain image!");
+		}
 
 		// Deal with the memory leak - this is due to the validation layers expecting the application to sync with the GPU which doesnt always happen 
 		vkQueueWaitIdle(presentQueue);
@@ -633,9 +753,23 @@ private:
 		window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
 	}
 
+	// Function which deals with the window resizing 
+	static void onWindowResized(GLFWwindow* window, int width, int height) 
+	{
+		// If width or hieght equal 0 then return false
+		if (width == 0 || height == 0) return;
+
+		// If the window size is not zero then resize the window and recreate the swap chain 
+		VulkanObjects* app = reinterpret_cast<VulkanObjects*>(glfwGetWindowUserPointer(window));
+		app->recreateSwapChain();
+	}
+
 	// Once the window is closed, deallocation of resources occurs 
 	void cleanup() 
 	{
+		// Clean up and destroy the Swap Chain
+		cleanupSwapChain();
+
 		// Destroy the semaphore
 		vkDestroySemaphore(device, renderFinishedSemaphore, nullptr);
 		vkDestroySemaphore(device, imageAvailableSemaphore, nullptr);
@@ -896,14 +1030,22 @@ private:
 	// Function which chooses the swap extent - the resolution of the swap chain images 
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities)
 	{
-
+		// If current width is not equal to the maximum size then return current extent 
 		if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) 
 		{
 			return capabilities.currentExtent;
 		}
+		// Else get width and height of window and set
 		else 
 		{
-			VkExtent2D actualExtent = { WIDTH, HEIGHT };
+			int width, height;
+			glfwGetWindowSize(window, &width, &height);
+
+			VkExtent2D actualExtent = 
+			{
+				static_cast<uint32_t>(width),
+				static_cast<uint32_t>(height)
+			};
 
 			actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));
 			actualExtent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, actualExtent.height));
@@ -969,8 +1111,14 @@ private:
 		// Attribute description - type of attribute passed to the vertex shader which binding to load them from and the offset 
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-		vertexInputInfo.vertexBindingDescriptionCount = 0;
-		vertexInputInfo.vertexAttributeDescriptionCount = 0;
+		// Get the binding and attribute information setup in the vertex struct
+		auto bindingDescription = Vertex::getBindingDescription();
+		auto attributeDescriptions = Vertex::getAttributeDescriptions();
+
+		vertexInputInfo.vertexBindingDescriptionCount = 1;
+		vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+		vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+		vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
 		// Input assemby struct which describes two things: what kind of geometry will be drawn from the vertices and if primitive restart should be enabled
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
