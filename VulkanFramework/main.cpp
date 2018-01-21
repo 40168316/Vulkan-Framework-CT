@@ -126,7 +126,7 @@ struct Vertex
 // Position, Colour - data now as one part of vertices
 const std::vector<Vertex> vertices =
 {
-	{ { 0.0f, -0.5f },{ 0.0f, 1.0f, 0.0f } },
+	{ { 0.0f, -0.5f },{ 1.0f, 1.0f, 0.0f } },
 	{ { 0.5f, 0.5f },{ 0.0f, 0.0f, 1.0f } },
 	{ { -0.5f, 0.5f },{ 1.0f, 0.0f, 0.0f } }
 };
@@ -187,6 +187,10 @@ private:
 	// Semaphores synchronise operations within or across command queues - check if the image is ready for rendering and signal that rendering has finished. 
 	VkSemaphore imageAvailableSemaphore;
 	VkSemaphore renderFinishedSemaphore;
+	// Vertex Buffer object 
+	VkBuffer vertexBuffer;
+	// Vertex Buffer memory object which holds the memory regarding the vertex buffer 
+	VkDeviceMemory vertexBufferMemory;
 
 	// Method which initiates various Vulkan calls 
 	void initVulkan() 
@@ -202,8 +206,75 @@ private:
 		createGraphicsPipeline();
 		createFramebuffers();
 		createCommandPool();
+		createVertexBuffer();
 		createCommandBuffers();
 		createSemaphores();
+	}
+
+	// Buffers in Vulkan are regions of memory used for storing arbitrary data that can be read by the graphics card - in this case, storing vertex data
+	void createVertexBuffer() 
+	{
+		// Struct which contains information about the Vertex Buffer
+		VkBufferCreateInfo bufferInfo = {};
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.size = sizeof(vertices[0]) * vertices.size(); // Specifies the size of the buffer in bytes using the parameter sizeof
+
+		bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT; // Indicates for which purposes the data in the buffer is going to be used - vertex buffer usage in this case
+		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE; // Specify the buffer can only be used by the graphics queue - making in exclusive 
+
+		// Initiate the Vertex Buffer object using the logical device, vertex buffer - if unsuccessful throw an error
+		if (vkCreateBuffer(device, &bufferInfo, nullptr, &vertexBuffer) != VK_SUCCESS) 
+		{
+			throw std::runtime_error("failed to create vertex buffer!");
+		}
+
+		// Create an object which defines the memory requirements for the vertex buffer 
+		VkMemoryRequirements memRequirements;
+		// Object which gets buffer memory requirements taking in logical device, vertex buffer object and memReuirements object 
+		vkGetBufferMemoryRequirements(device, vertexBuffer, &memRequirements);
+
+		// With the correct memory determined using findMemoryType function, the actual memory allocation can occur 
+		// Struct which allocates the memory for the vertex buffer
+		VkMemoryAllocateInfo allocInfo = {};
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.allocationSize = memRequirements.size; // Define the size which was derived from the memory requirements
+		allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT); // Set the type
+
+		// Initialise the memory for the vertex buffer - if unsuccessful throw an error 
+		if (vkAllocateMemory(device, &allocInfo, nullptr, &vertexBufferMemory) != VK_SUCCESS) 
+		{
+			throw std::runtime_error("failed to allocate vertex buffer memory!");
+		}
+
+		// Bind the vertex buffer and the memory 
+		vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0);
+
+		// Copying the vertex data to the buffer - done by mapping the buffer memory into the CPU 
+		void* data;
+		vkMapMemory(device, vertexBufferMemory, 0, bufferInfo.size, 0, &data); // Map the data to the memory (logical device, VB memory, offset, size, specify flags, data)
+		memcpy(data, vertices.data(), (size_t)bufferInfo.size); // Memory copy the vertex data to the mapped memory then unmap the memory
+		vkUnmapMemory(device, vertexBufferMemory);
+	}
+	
+	// Function which defines the memory type as graphics cards can vary on different types of memories they offer 
+	// This is done by combing the requirements of the buffer and our our own application requirements to find the right type of memory 
+	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) 
+	{
+		// Query for the correct types of memory which can be found on the selected physical device 
+		VkPhysicalDeviceMemoryProperties memProperties;
+		vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+
+		// For the memory type count found
+		for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) 
+		{
+			// If typefilter - which specifies the bit field of memory types that are suitable = true - and if the property flags and properties of the physical device = desired properties 
+			if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) 
+			{
+				return i;
+			}
+		}
+		// Throw an error if no suitable types of memory were found 
+		throw std::runtime_error("failed to find suitable memory type!");
 	}
 
 	// Function which creates the required semaphores - synchronise operations within or across command queues - check if the image is ready for rendering and signal that rendering has finished. 
@@ -769,6 +840,11 @@ private:
 	{
 		// Clean up and destroy the Swap Chain
 		cleanupSwapChain();
+
+		// Destroy the vertex buffer
+		vkDestroyBuffer(device, vertexBuffer, nullptr);
+		// Free the vertex buffer memory
+		vkFreeMemory(device, vertexBufferMemory, nullptr);
 
 		// Destroy the semaphore
 		vkDestroySemaphore(device, renderFinishedSemaphore, nullptr);
@@ -1372,8 +1448,15 @@ private:
 			// Command buffer to record the command to, pipeline object is a graphics pipeline, 
 			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
+			// Get the vertex buffer information
+			VkBuffer vertexBuffers[] = { vertexBuffer };
+			// Specify the offset - not existing in this case
+			VkDeviceSize offsets[] = { 0 };
+			// Bind the vertex buffers - commandbuffers, offset, number of bindings, vertexbuffers themselves and offests of the vertex data
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
+
 			// Draw the command buffers (vertex count, instanceCount, firstVertex, firstInstance)
-			vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+			vkCmdDraw(commandBuffers[i], static_cast<uint32_t>(vertices.size()), 1, 0, 0);
 
 			// End the render pass 
 			vkCmdEndRenderPass(commandBuffers[i]);
