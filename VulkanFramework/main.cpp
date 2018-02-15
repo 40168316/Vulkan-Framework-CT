@@ -305,7 +305,7 @@ private:
 	VkDeviceMemory depthImageMemory;
 	// Depth image view - what part of the depth image we see
 	VkImageView depthImageView;
-	free_camera freeCam;
+	free_camera* freeCam;
 
 	void initAdditionalFeatures()
 	{
