@@ -34,13 +34,17 @@
 #include <chrono>
 #include <unordered_map>
 
+#include "camera.h"
+#include "free_camera.h"
+
+
 // Width and Heigh of the window - used throught the application 
 const int WIDTH = 800;
 const int HEIGHT = 600;
 
 // Files used for the Models
-const std::string MODEL_PATH = "models/chalet.obj";
-const std::string TEXTURE_PATH = "textures/chalet.jpg";
+const std::string MODEL_PATH = "models/sphere.obj"; // Set model
+const std::string TEXTURE_PATH = "textures/texture.jpg"; // Set texture for model
 
 // Enable a range of useful diagnostics layers instead of spefic ones 
 const std::vector<const char*> validationLayers = 
@@ -149,47 +153,56 @@ struct Vertex
 		return attributeDescriptions;
 	}
 
-	// Helper function used as part of the model loader to set the vertex information
-	bool operator==(const Vertex& other) const 
-	{
-		return pos == other.pos && color == other.color && texCoord == other.texCoord;
-	}
+	//// Helper function used as part of the model loader to set the vertex information - Comment out when not using models
+	//bool operator==(const Vertex& other) const 
+	//{
+	//	return pos == other.pos && color == other.color && texCoord == other.texCoord;
+	//}
 };
 
-namespace std 
-{
-	template<> struct hash<Vertex> 
-	{
-		size_t operator()(Vertex const& vertex) const 
-		{
-			return ((hash<glm::vec3>()(vertex.pos) ^
-				(hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
-				(hash<glm::vec2>()(vertex.texCoord) << 1);
-		}
-	};
-}
+//namespace std - Comment out when not using models
+//{
+//	template<> struct hash<Vertex> 
+//	{
+//		size_t operator()(Vertex const& vertex) const 
+//		{
+//			return ((hash<glm::vec3>()(vertex.pos) ^
+//				(hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
+//				(hash<glm::vec2>()(vertex.texCoord) << 1);
+//		}
+//	};
+//}
 
 // Position, Colour - data now as one part of vertices
 const std::vector<Vertex> vertices =
 {
-	// Upper (original) triangle
+	// Upper (original) square
 	{ { -0.5f, -0.5f, 0.0f },{ 1.0f, 1.0f, 0.0f }, {1.0f, 0.0f} },
 	{ { 0.5f, -0.5f, 0.0f },{ 0.0f, 0.0f, 1.0f }, { 0.0f, 0.0f } },
 	{ { 0.5f, 0.5f, 0.0f },{ 1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f } },
 	{ { -0.5f, 0.5f, 0.0f },{ 0.0f, 1.0f, 1.0f }, { 1.0f, 1.0f } },
 
-	// Lower triangle 
-	{ { -0.5f, -0.5f, -0.5f },{ 1.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
-	{ { 0.5f, -0.5f, -0.5f },{ 0.0f, 1.0f, 0.0f },{ 1.0f, 0.0f } },
-	{ { 0.5f, 0.5f, -0.5f },{ 0.0f, 0.0f, 1.0f },{ 1.0f, 1.0f } },
-	{ { -0.5f, 0.5f, -0.5f },{ 1.0f, 1.0f, 1.0f },{ 0.0f, 1.0f } }
+	// Lower square 
+	{ { -0.5f, -0.5f, -1.0f },{ 1.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
+	{ { 0.5f, -0.5f, -1.0f },{ 0.0f, 1.0f, 0.0f },{ 1.0f, 0.0f } },
+	{ { 0.5f, 0.5f, -1.0f },{ 0.0f, 0.0f, 1.0f },{ 1.0f, 1.0f } },
+	{ { -0.5f, 0.5f, -1.0f },{ 1.0f, 1.0f, 1.0f },{ 0.0f, 1.0f } },
+
+	//{ { -0.5f, -0.5f, 0.0f },{ 1.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
+	//{ { 0.5f, -0.5f, -1.0f },{ 0.0f, 1.0f, 0.0f },{ 1.0f, 0.0f } },
+	//{ { 0.5f, 0.5f, -1.0f },{ 0.0f, 0.0f, 1.0f },{ 1.0f, 1.0f } },
+	//{ { -0.5f, 0.5f, 0.0f },{ 1.0f, 1.0f, 1.0f },{ 0.0f, 1.0f } }
 };
 
 // Indices information which is used to draw a square 
 const std::vector<uint16_t> indices = 
 {
-	0, 1, 2, 2, 3, 0,
-	4, 5, 6, 6, 7, 4
+	0, 1, 2, 2, 3, 0, // Top
+	4, 5, 6, 6, 7, 4, // Bottom
+	4, 5, 1, 1, 0, 4, // Sides
+	5, 6, 2, 2, 1, 5, // Sides
+	6, 7, 3, 3, 2, 6, // Sides
+	7, 4, 0, 0, 3, 7 // Sides
 };
 
 // Struct which Uniform Buffer Object 
@@ -210,6 +223,7 @@ public:
 	{
 		initWindow();
 		initVulkan();
+		initAdditionalFeatures();
 		mainLoop();
 		cleanup();
 	}
@@ -256,6 +270,9 @@ private:
 	// Semaphores synchronise operations within or across command queues - check if the image is ready for rendering and signal that rendering has finished. 
 	VkSemaphore imageAvailableSemaphore;
 	VkSemaphore renderFinishedSemaphore;
+	// Vectors which contain the vertices and indices for the model
+	//std::vector<Vertex> vertices;
+	//std::vector<uint32_t> indices;
 	// Vertex Buffer object 
 	VkBuffer vertexBuffer;
 	// Vertex Buffer memory object which holds the memory regarding the vertex buffer 
@@ -288,9 +305,18 @@ private:
 	VkDeviceMemory depthImageMemory;
 	// Depth image view - what part of the depth image we see
 	VkImageView depthImageView;
-	// Vectors which contain the vertices and indices for the model
-	std::vector<Vertex> vertices;
-	std::vector<uint32_t> indices;
+	free_camera freeCam;
+
+	void initAdditionalFeatures()
+	{
+		
+		// Free camera for in game
+		freeCam = new free_camera();
+		freeCam->set_Posistion(glm::vec3(0, 10, -10));
+		freeCam->rotate(-10.0, 0.0);
+		freeCam->set_Target(glm::vec3(0, 0, 0));
+		freeCam->set_projection(glm::quarter_pi<float>(), (float)WIDTH/(float)HEIGHT, 0.414f, 40000.0f);
+	}
 
 	// Method which initiates various Vulkan calls 
 	void initVulkan() 
@@ -311,7 +337,7 @@ private:
 		createTextureImage();
 		createTextureImageView();
 		createTextureSampler();
-		loadModel();			// Method used to load model
+		//loadModel();			// Method used to load model
 		createVertexBuffer();
 		createIndexBuffer();
 		createUniformBuffer();
@@ -322,56 +348,56 @@ private:
 	}
 
 	// Function which loads a model
-	void loadModel() 
-	{
-		// Attribute container which holds all of the position, texture coordinates and faces
-		tinyobj::attrib_t attrib;
-		std::vector<tinyobj::shape_t> shapes; // Shapes
-		std::vector<tinyobj::material_t> materials; // The materials
-		std::string err; // Any errors or warnings that can occur while the model is in transit - loading...
+	//void loadModel() 
+	//{
+	//	// Attribute container which holds all of the position, texture coordinates and faces
+	//	tinyobj::attrib_t attrib;
+	//	std::vector<tinyobj::shape_t> shapes; // Shapes
+	//	std::vector<tinyobj::material_t> materials; // The materials
+	//	std::string err; // Any errors or warnings that can occur while the model is in transit - loading...
 
-		// If the model cannot be loaded then throw an error
-		if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err, MODEL_PATH.c_str())) 
-		{
-			throw std::runtime_error(err);
-		}
+	//	// If the model cannot be loaded then throw an error
+	//	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err, MODEL_PATH.c_str())) 
+	//	{
+	//		throw std::runtime_error(err);
+	//	}
 
-		// Unordered map which stores all of the unique vertices 
-		std::unordered_map<Vertex, uint32_t> uniqueVertices = {};
+	//	// Unordered map which stores all of the unique vertices 
+	//	std::unordered_map<Vertex, uint32_t> uniqueVertices = {};
 
-		// Iterate over all the shapes which make up the model
-		for (const auto& shape : shapes) {
-			// For all the incides in the model
-			for (const auto& index : shape.mesh.indices) 
-			{
-				// Find the vertex positions
-				Vertex vertex = {};
-				vertex.pos = {
-					attrib.vertices[3 * index.vertex_index + 0],
-					attrib.vertices[3 * index.vertex_index + 1],
-					attrib.vertices[3 * index.vertex_index + 2]
-				};
+	//	// Iterate over all the shapes which make up the model
+	//	for (const auto& shape : shapes) {
+	//		// For all the incides in the model
+	//		for (const auto& index : shape.mesh.indices) 
+	//		{
+	//			// Find the vertex positions
+	//			Vertex vertex = {};
+	//			vertex.pos = {
+	//				attrib.vertices[3 * index.vertex_index + 0],
+	//				attrib.vertices[3 * index.vertex_index + 1],
+	//				attrib.vertices[3 * index.vertex_index + 2]
+	//			};
 
-				// Find the vertex texture coordinates
-				vertex.texCoord = {
-					attrib.texcoords[2 * index.texcoord_index + 0],
-					1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
-				};
+	//			// Find the vertex texture coordinates
+	//			vertex.texCoord = {
+	//				attrib.texcoords[2 * index.texcoord_index + 0],
+	//				1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
+	//			};
 
-				// Set the vertex colour
-				vertex.color = { 1.0f, 1.0f, 1.0f };
+	//			// Set the vertex colour
+	//			vertex.color = { 1.0f, 1.0f, 1.0f };
 
-				//
-				if (uniqueVertices.count(vertex) == 0) 
-				{
-					uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
-					vertices.push_back(vertex);
-				}
+	//			//
+	//			if (uniqueVertices.count(vertex) == 0) 
+	//			{
+	//				uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+	//				vertices.push_back(vertex);
+	//			}
 
-				indices.push_back(uniqueVertices[vertex]);
-			}
-		}
-	}
+	//			indices.push_back(uniqueVertices[vertex]);
+	//		}
+	//	}
+	//}
 
 	void createDepthResources() 
 	{
@@ -815,7 +841,7 @@ private:
 		createBuffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
 
 		// Copying the vertex data to the buffer - done by mapping the buffer memory into the CPU 
-		void* data;
+		void* data; 
 		vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data); // Map the data to the memory (logical device, VB memory, offset, size, specify flags, data)
 		memcpy(data, vertices.data(), (size_t) bufferSize); // Memory copy the vertex data to the mapped memory then unmap the memory
 		vkUnmapMemory(device, stagingBufferMemory);
@@ -1458,6 +1484,12 @@ private:
 			// Update the uniform buffer to allow for transforms to take place 
 			updateUniformBuffer();
 			drawFrame();
+
+			if (glfwGetKey(window, GLFW_KEY_W))
+			{
+				std::cout << "hello" << std::endl;
+
+			}
 		}
 
 		// Wait for logical device to finish before destorying 
@@ -1476,7 +1508,7 @@ private:
 
 		// Struct which contains the Model view projection matrix information stored in the uniform buffer object
 		UniformBufferObject ubo = {};
-		ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)); // Multiple radian * time part by 0.01f to go really really slow
 		ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 		ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
 		ubo.proj[1][1] *= -1;
@@ -1553,7 +1585,8 @@ private:
 		{
 			recreateSwapChain();
 		}
-		else if (result != VK_SUCCESS) {
+		else if (result != VK_SUCCESS) 
+		{
 			throw std::runtime_error("failed to present swap chain image!");
 		}
 
@@ -2243,7 +2276,7 @@ private:
 			// Bind the vertex buffers - commandbuffers, offset, number of bindings, vertexbuffers themselves and offests of the vertex data
 			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
 			// Bind the index buffers
-			vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT16); // VK_INDEX_TYPE_UINT32 - needs to be 16 when using models
 			// Bind the descriptor sets 
 			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
 
