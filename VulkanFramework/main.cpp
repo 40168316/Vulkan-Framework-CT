@@ -34,6 +34,7 @@
 #include <chrono>
 #include <unordered_map>
 
+// Include other header files
 #include "camera.h"
 #include "free_camera.h"
 
@@ -218,6 +219,12 @@ class VulkanObjects
 {
 	// Public modifier - can be seen by all
 public:
+	AllCamera::free_camera* freeCam;
+	// Create vector to apply to current cam pos
+	glm::vec3 freeCamPos = glm::vec3(0, 0, 0);
+	double cursor_x, cursor_y = 0.0;
+	double dt;
+	
 	// Run method which contains all the private class members 
 	void run() 
 	{
@@ -305,14 +312,12 @@ private:
 	VkDeviceMemory depthImageMemory;
 	// Depth image view - what part of the depth image we see
 	VkImageView depthImageView;
-	free_camera* freeCam;
 
 	void initAdditionalFeatures()
 	{
-		
 		// Free camera for in game
-		freeCam = new free_camera();
-		freeCam->set_Posistion(glm::vec3(0, 10, -10));
+		freeCam = new AllCamera::free_camera();
+		freeCam->set_Posistion(glm::vec3(4.0f, 4.0f, 4.0f));
 		freeCam->rotate(-10.0, 0.0);
 		freeCam->set_Target(glm::vec3(0, 0, 0));
 		freeCam->set_projection(glm::quarter_pi<float>(), (float)WIDTH/(float)HEIGHT, 0.414f, 40000.0f);
@@ -1479,17 +1484,61 @@ private:
 		// While window is not closed - Checks for end commands such as the X button 
 		while (!glfwWindowShouldClose(window))
 		{
+			
+
+			// Start the time in seconds as the rendering has started with floating point accuracy - required for movement - like delta time
+			static auto startTime = std::chrono::high_resolution_clock::now();
+			// Get the current time
+			auto currentTime = std::chrono::high_resolution_clock::now();
+			// Calculate the current time by taking the start time away from the current time
+			float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+			if (glfwGetKey(window, GLFW_KEY_W))
+			{
+				std::cout << "W" << std::endl;
+				freeCamPos = (glm::vec3(0, 0, 5.0f * time));
+			}
+			if (glfwGetKey(window, GLFW_KEY_A))
+			{
+				std::cout << "A" << std::endl;
+				freeCamPos = (glm::vec3(-5.0f, 0, 0));
+			}
+			if (glfwGetKey(window, GLFW_KEY_S))
+			{
+				std::cout << "S" << std::endl;
+				freeCamPos = (glm::vec3(0, 0, -5.0f));
+			}
+			if (glfwGetKey(window, GLFW_KEY_D))
+			{
+				std::cout << "D" << std::endl;
+				freeCamPos = (glm::vec3(5.0f, 0, 0));
+			}
+			freeCam->move(freeCamPos);
+
+			// Free cam stuff
+			static double ratio_width = glm::quarter_pi<float>() / WIDTH;
+			static double ratio_height = (glm::quarter_pi<float>() * (WIDTH / HEIGHT)) / static_cast<float>(WIDTH);
+			double current_x, current_y;
+			glfwGetCursorPos(window, &current_x, &current_y);
+			// Calc delta
+			double delta_x = current_x - cursor_x;
+			double delta_y = current_y - cursor_y;
+			// Multiply deltas by ratios
+			delta_x *= ratio_width;
+			delta_y *= ratio_height * -1; // -1 to invert on y axis
+										  // Rotate camera by delta
+			freeCam->rotate(delta_x, delta_y);
+			freeCam->update(0.001);
+			// Update cursor pos
+			cursor_x = current_x;
+			cursor_y = current_y;
+
+			
 			glfwPollEvents();
 
 			// Update the uniform buffer to allow for transforms to take place 
 			updateUniformBuffer();
 			drawFrame();
-
-			if (glfwGetKey(window, GLFW_KEY_W))
-			{
-				std::cout << "hello" << std::endl;
-
-			}
 		}
 
 		// Wait for logical device to finish before destorying 
@@ -1508,10 +1557,13 @@ private:
 
 		// Struct which contains the Model view projection matrix information stored in the uniform buffer object
 		UniformBufferObject ubo = {};
-		ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)); // Multiple radian * time part by 0.01f to go really really slow
-		ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
+		ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)); // Multiple radian * time part by 0.01f to go really really slow 
+		ubo.view = glm::lookAt(glm::vec3(4.0f, 4.0f, 4.0f), glm::vec3(0.0f, 2.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)); // Camera distance, focus point, up axis
+		ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f); // 45 degree field of view, aspect ratio, near and far view planes
 		ubo.proj[1][1] *= -1;
+
+		//ubo.view = freeCam->get_View();
+		//ubo.proj = freeCam->get_Projection();
 
 		// Once the MVP is set, copy the uniform data over
 		void* data;
