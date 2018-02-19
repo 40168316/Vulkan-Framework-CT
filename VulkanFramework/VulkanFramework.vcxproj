@@ -88,12 +88,12 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>E:\GLFW\glfw-3.2.1.bin.WIN32\include;E:\GLM\glm;E:\Vulkan\1.0.54.0\Include;E:\TinyOBJ;E:\STBIMAGE;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\include\GLFW\glfw-3.2.1.bin.WIN32\include;$(ProjectDir)\include\GLM\glm;$(ProjectDir)\include\Vulkan\1.0.54.0\Include;$(ProjectDir)\include\STBIMAGE;$(ProjectDir)\include\TinyOBJ;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>E:\Vulkan\1.0.54.0\Lib32;E:\GLFW\glfw-3.2.1.bin.WIN32\lib-vc2015;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)\include\Vulkan\1.0.54.0\Lib32;$(ProjectDir)\include\GLFW\glfw-3.2.1.bin.WIN32\lib-vc2015;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
