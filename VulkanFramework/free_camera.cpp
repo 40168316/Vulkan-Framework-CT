@@ -1,9 +1,12 @@
 #include "free_camera.h"
-
+#include <iostream>
 namespace AllCamera
 {
 	void free_camera::update(float delta_time)
 	{
+		//std::cout <<"Pitch" << pitch << std::endl;
+		//std::cout << "Yaw" <<  yaw << std::endl;
+
 		// Calculate the forward direction - spherical coordinates to Cartesian
 		glm::vec3 forward(cosf(pitch)* -sinf(yaw), sinf(pitch), -cosf(yaw) * cosf(pitch));
 		//Normalize forward

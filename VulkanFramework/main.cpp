@@ -45,7 +45,7 @@ const int HEIGHT = 600;
 
 // Files used for the Models
 const std::string MODEL_PATH = "models/sphere.obj"; // Set model
-const std::string TEXTURE_PATH = "textures/texture.jpg"; // Set texture for model
+const std::string TEXTURE_PATH = "textures/repeat.jpg"; // Set texture for model
 
 // Enable a range of useful diagnostics layers instead of spefic ones 
 const std::vector<const char*> validationLayers = 
@@ -199,7 +199,18 @@ const std::vector<Vertex> vertices =
 const std::vector<uint16_t> indices = 
 {
 	0, 1, 2, 2, 3, 0, // Top
-	4, 5, 6, 6, 7, 4, // Bottom
+	4, 7, 6, 6, 5, 4, // Bottom
+	4, 5, 1, 1, 0, 4, // Sides
+	5, 6, 2, 2, 1, 5, // Sides
+	6, 7, 3, 3, 2, 6, // Sides
+	7, 4, 0, 0, 3, 7 // Sides
+};
+
+// Indices information which is used to draw a square 
+const std::vector<uint16_t> cube =
+{
+	0, 1, 2, 2, 3, 0, // Top
+	4, 7, 6, 6, 5, 4, // Bottom
 	4, 5, 1, 1, 0, 4, // Sides
 	5, 6, 2, 2, 1, 5, // Sides
 	6, 7, 3, 3, 2, 6, // Sides
@@ -221,9 +232,9 @@ class VulkanObjects
 public:
 	AllCamera::free_camera* freeCam;
 	// Create vector to apply to current cam pos
-	glm::vec3 freeCamPos = glm::vec3(0, 0, 0);
-	double cursor_x, cursor_y = 0.0;
-	double dt;
+	glm::vec3 freeCamPos = glm::vec3(2.0f, 2.0f, 2.0f);
+	double cursor_x = 0.0, cursor_y = 0.0;
+	float cameraSpeed = 0.001f;
 	
 	// Run method which contains all the private class members 
 	void run() 
@@ -315,12 +326,13 @@ private:
 
 	void initAdditionalFeatures()
 	{
+		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 		// Free camera for in game
 		freeCam = new AllCamera::free_camera();
-		freeCam->set_Posistion(glm::vec3(4.0f, 4.0f, 4.0f));
-		freeCam->rotate(-10.0, 0.0);
-		freeCam->set_Target(glm::vec3(0, 0, 0));
-		freeCam->set_projection(glm::quarter_pi<float>(), (float)WIDTH/(float)HEIGHT, 0.414f, 40000.0f);
+		freeCam->set_Posistion(glm::vec3(1.0f, 1.0f, 10.0f));
+		freeCam->rotate(0.0f, 0.0f);
+		freeCam->set_Target(glm::vec3(0.0f, 0.0f, 0.0f));
+		freeCam->set_projection(glm::quarter_pi<float>(), (float)WIDTH/(float)HEIGHT, 0.1, 1000.0f);
 	}
 
 	// Method which initiates various Vulkan calls 
@@ -1485,7 +1497,7 @@ private:
 		while (!glfwWindowShouldClose(window))
 		{
 			
-
+			freeCamPos = glm::vec3(0.0f, 0.0f, 0.0f);
 			// Start the time in seconds as the rendering has started with floating point accuracy - required for movement - like delta time
 			static auto startTime = std::chrono::high_resolution_clock::now();
 			// Get the current time
@@ -1493,26 +1505,30 @@ private:
 			// Calculate the current time by taking the start time away from the current time
 			float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
+			//std::cout << "Time: " << time << std::endl;
+
+			// Move the free camera position vector
 			if (glfwGetKey(window, GLFW_KEY_W))
 			{
 				std::cout << "W" << std::endl;
-				freeCamPos = (glm::vec3(0, 0, 5.0f * time));
+				freeCamPos = (glm::vec3(0.0f, 0.0f, 5.0f)*cameraSpeed);
 			}
 			if (glfwGetKey(window, GLFW_KEY_A))
 			{
 				std::cout << "A" << std::endl;
-				freeCamPos = (glm::vec3(-5.0f, 0, 0));
+				freeCamPos = (glm::vec3(-5.0f, 0.0f, 0.0f)*cameraSpeed);
 			}
 			if (glfwGetKey(window, GLFW_KEY_S))
 			{
 				std::cout << "S" << std::endl;
-				freeCamPos = (glm::vec3(0, 0, -5.0f));
+				freeCamPos = (glm::vec3(0.0f, 0.0f, -5.0f)*cameraSpeed);
 			}
 			if (glfwGetKey(window, GLFW_KEY_D))
 			{
 				std::cout << "D" << std::endl;
-				freeCamPos = (glm::vec3(5.0f, 0, 0));
+				freeCamPos = (glm::vec3(5.0f, 0.0f, 0.0f)*cameraSpeed);
 			}
+			// Update the free camera by the free camera position
 			freeCam->move(freeCamPos);
 
 			// Free cam stuff
@@ -1521,18 +1537,19 @@ private:
 			double current_x, current_y;
 			glfwGetCursorPos(window, &current_x, &current_y);
 			// Calc delta
-			double delta_x = current_x - cursor_x;
+			double delta_x = current_x - cursor_x; //op
 			double delta_y = current_y - cursor_y;
 			// Multiply deltas by ratios
 			delta_x *= ratio_width;
 			delta_y *= ratio_height * -1; // -1 to invert on y axis
-										  // Rotate camera by delta
+			// Rotate camera by delta 
 			freeCam->rotate(delta_x, delta_y);
 			freeCam->update(0.001);
 			// Update cursor pos
 			cursor_x = current_x;
 			cursor_y = current_y;
 
+			std::cout << "Free Camera Position: " << freeCam->get_Posistion().x << " " << freeCam->get_Posistion().y << " " << freeCam->get_Posistion().z << std::endl;
 			
 			glfwPollEvents();
 
@@ -1558,12 +1575,13 @@ private:
 		// Struct which contains the Model view projection matrix information stored in the uniform buffer object
 		UniformBufferObject ubo = {};
 		ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)); // Multiple radian * time part by 0.01f to go really really slow 
-		ubo.view = glm::lookAt(glm::vec3(4.0f, 4.0f, 4.0f), glm::vec3(0.0f, 2.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)); // Camera distance, focus point, up axis
-		ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f); // 45 degree field of view, aspect ratio, near and far view planes
+		//ubo.view = glm::lookAt(glm::vec3(4.0f, 4.0f, 4.0f), glm::vec3(0,0,0), glm::vec3(0.0f, 0.0f, 1.0f)); // Camera distance, focus point, up axis
+		//ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f); // 45 degree field of view, aspect ratio, near and far view planes
+		
+		ubo.view = freeCam->get_View();
+		ubo.proj = freeCam->get_Projection();
+		
 		ubo.proj[1][1] *= -1;
-
-		//ubo.view = freeCam->get_View();
-		//ubo.proj = freeCam->get_Projection();
 
 		// Once the MVP is set, copy the uniform data over
 		void* data;
