@@ -45,7 +45,8 @@ const int HEIGHT = 600;
 
 // Files used for the Models
 const std::string MODEL_PATH = "models/sphere.obj"; // Set model
-const std::string TEXTURE_PATH = "textures/repeat.jpg"; // Set texture for model
+const std::string repeatTexturePath = "textures/repeat.jpg"; // Set texture for model
+const std::string checkedTexturePath = "textures/checks.jpg"; // Set texture for model
 
 // Enable a range of useful diagnostics layers instead of spefic ones 
 const std::vector<const char*> validationLayers = 
@@ -175,19 +176,18 @@ struct Vertex
 //}
 
 // Position, Colour, Texcoord - data now as one part of vertices
-const std::vector<Vertex> vertices =
+const std::vector<Vertex> planeVertices =
 {
-
 	{ { -15.0f, 0.0f, -15.0f },{ 1.0f, 1.0f, 1.0f },{ 1.0f, 0.0f } },
-	{ { 15.0f, 0.0f, -15.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
+	{ { 15.0f, 0.0f, -15.0f },{ 1.0f, 1.0f, 1.0f },{ 0.0f, 0.0f } },
 	{ { 15.0f, 0.0f, 15.0f },{ 1.0f, 1.0f, 1.0f },{ 0.0f, 1.0f } },
-	{ { -15.0f, 0.0f, 15.0f },{ 0.0f, 0.0f, 0.0f },{ 1.0f, 1.0f } },
+	{ { -15.0f, 0.0f, 15.0f },{ 1.0f, 1.0f, 1.0f },{ 1.0f, 1.0f } },
 };
 
 const std::vector<Vertex> cubeVertices =
 {
 	// Upper (original) square
-	{ { -0.5f, 00.0f, 3.0f },{ 1.0f, 1.0f, 0.0f },{ 1.0f, 0.0f } },
+	{ { -0.5f, 0.0f, 3.0f },{ 1.0f, 1.0f, 0.0f },{ 1.0f, 0.0f } },
 	{ { 0.5f, 0.0f, 3.0f },{ 0.0f, 0.0f, 1.0f },{ 0.0f, 0.0f } },
 	{ { 0.5f, 1.0f, 3.0f },{ 1.0f, 0.0f, 0.0f },{ 0.0f, 1.0f } },
 	{ { -0.5f, 1.0f, 3.0f },{ 0.0f, 1.0f, 1.0f },{ 1.0f, 1.0f } },
@@ -200,9 +200,8 @@ const std::vector<Vertex> cubeVertices =
 };
 
 // Indices information which is used to draw a square 
-const std::vector<uint16_t> plane = 
+const std::vector<uint16_t> planeIndices = 
 {
-	//0, 1, 2, 2, 3, 0, // floor
 	3, 2, 1, 1, 0, 3
 };
 
@@ -292,19 +291,15 @@ private:
 	//std::vector<uint32_t> indices;
 	// Vertex Buffer object 
 	std::vector<VkBuffer> vectorVB;
-	VkBuffer vertexBuffer;
 	VkBuffer vertexCube;
 	VkBuffer vertexPlane;
 	// Vertex Buffer memory object which holds the memory regarding the vertex buffer 
-	VkDeviceMemory vertexBufferMemory;
 	VkDeviceMemory vertexCubeMemory;
 	VkDeviceMemory vertexPlaneMemory;
 	// Index buffer object
-	VkBuffer indexBuffer;
 	VkBuffer indexCube;
 	VkDeviceMemory indexPlane;
 	// Vertex Buffer memory object which holds the memory regarding the vertex buffer 
-	VkDeviceMemory indexBufferMemory;
 	VkDeviceMemory indexCubeMemory;
 	VkDeviceMemory indexPlaneMemory;
 	// Descriptor layout used for specifying the layout for the uniform buffers
@@ -317,14 +312,19 @@ private:
 	VkDescriptorPool descriptorPool;
 	// Descriptor set which is gets sets from the pool
 	VkDescriptorSet descriptorSet;
+	VkDescriptorSet checkedDescriptorSet;
 	// Object which is used to store texture images 
-	VkImage textureImage;
+	VkImage repeatTexture;
+	VkImage checkedTexture;
 	// Texture image memory 
-	VkDeviceMemory textureImageMemory;
+	VkDeviceMemory repeatTextureMemory;
+	VkDeviceMemory checkedTextureMemory;
 	// Image view which holds the texture image 
 	VkImageView textureImageView;
+	VkImageView checkedImageView;
 	// Texture sampler object that handles the texture sampler information - regards to how the image is presented - ie repeat or wrapped
 	VkSampler textureSampler;
+	VkSampler checkedSampler;
 	// Depth image - like a colour attachment and defines the fepth of the images
 	VkImage depthImage;
 	// Depth image memory
@@ -359,17 +359,20 @@ private:
 		createCommandPool();
 		createDepthResources();
 		createFramebuffers();
-		createTextureImage();
-		createTextureImageView();
+		createTextureImage(repeatTexturePath, repeatTexture, repeatTextureMemory);
+		createTextureImageView(repeatTexture, textureImageView);
+		createTextureImage(checkedTexturePath, checkedTexture, checkedTextureMemory);
+		createTextureImageView(checkedTexture, checkedImageView);
 		createTextureSampler();
 		//loadModel();			// Method used to load model
-		createVertexBuffer(vertices, vertexBuffer, vertexBufferMemory);
+		createVertexBuffer(planeVertices, vertexPlane, vertexPlaneMemory);
 		createVertexBuffer(cubeVertices, vertexCube, vertexCubeMemory);
-		createIndexBuffer(plane, indexBuffer, indexBufferMemory);
+		createIndexBuffer(planeIndices, indexPlane, indexPlaneMemory);
 		createIndexBuffer(cubeIndices, indexCube, indexCubeMemory);
 		createUniformBuffer();
 		createDescriptorPool();
-		createDescriptorSet();
+		createDescriptorSet(descriptorSet, textureImageView);
+		createDescriptorSet(checkedDescriptorSet, checkedImageView);
 		createCommandBuffers();
 		createSemaphores();
 	}
@@ -511,9 +514,9 @@ private:
 	}
 
 	// Function which is used to create a texture view for an image - used as part of the graphics pipeline and in the swap chain process 
-	void createTextureImageView() 
+	void createTextureImageView(VkImage texture, VkImageView &textureImView) 
 	{
-		textureImageView = createImageView(textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
+		textureImView = createImageView(texture, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
 	}
 
 	// Function which creates and returns an image view
@@ -544,11 +547,11 @@ private:
 	}
 
 	// Function which will load an image and upload it into a Vulkan image object
-	void createTextureImage() 
+	void createTextureImage(std::string textureName, VkImage &textureIm, VkDeviceMemory &textureImMemory) 
 	{
 		// Use the STBI image loader to load the image and 
 		int texWidth, texHeight, texChannels;
-		stbi_uc* pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+		stbi_uc* pixels = stbi_load(textureName.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 		VkDeviceSize imageSize = texWidth * texHeight * 4;
 
 		// If pixels do not exist then throw error 
@@ -574,14 +577,14 @@ private:
 		stbi_image_free(pixels);
 
 		// Create the image by inputing the image and getting all the pixel information
-		createImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
+		createImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureIm, textureImMemory);
 
 		// Transition the image to the texture
-		transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		transitionImageLayout(textureIm, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 		// Copy the buffer
-		copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+		copyBufferToImage(stagingBuffer, textureIm, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
 		// Transition the image to the texture, however, this time with shader access
-		transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		transitionImageLayout(textureIm, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 		// Destroy and free the buffer/memory  
 		vkDestroyBuffer(device, stagingBuffer, nullptr);
@@ -709,7 +712,7 @@ private:
 	}
 
 	// Function which is used to create the descriptor sets from the descriptor pool 
-	void createDescriptorSet() 
+	void createDescriptorSet(VkDescriptorSet &desSet, VkImageView textureImView)
 	{
 		VkDescriptorSetLayout layouts[] = { descriptorSetLayout };
 		// Struct which contains information regarding the sets
@@ -720,7 +723,7 @@ private:
 		allocInfo.pSetLayouts = layouts;
 
 		// Initiate the descriptor sets - if not successful throw error 
-		if (vkAllocateDescriptorSets(device, &allocInfo, &descriptorSet) != VK_SUCCESS) 
+		if (vkAllocateDescriptorSets(device, &allocInfo, &desSet) != VK_SUCCESS)
 		{
 			throw std::runtime_error("failed to allocate descriptor set!");
 		}
@@ -734,14 +737,14 @@ private:
 		// Struct which contains infomration with regards to the image - bding the imag and rampler using the descriptor 
 		VkDescriptorImageInfo imageInfo = {};
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo.imageView = textureImageView;
+		imageInfo.imageView = textureImView;
 		imageInfo.sampler = textureSampler;
 
 		// Create an array of descriptors 
 		std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
 
 		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; // Set type to descriptor write 
-		descriptorWrites[0].dstSet = descriptorSet; // Assign the created descriptor set
+		descriptorWrites[0].dstSet = desSet; // Assign the created descriptor set
 		descriptorWrites[0].dstBinding = 0; // Binding index starts at the first element - 0
 		descriptorWrites[0].dstArrayElement = 0; // Binding index starts at the first element - 0
 		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; //Define the descriptor as uniform buffer 
@@ -749,7 +752,7 @@ private:
 		descriptorWrites[0].pBufferInfo = &bufferInfo; // Set the buffer info
 
 		descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; // Set type to descriptor write 
-		descriptorWrites[1].dstSet = descriptorSet; // Assign the created descriptor set
+		descriptorWrites[1].dstSet = desSet; // Assign the created descriptor set
 		descriptorWrites[1].dstBinding = 1; // Binding index starts at the second element - 1
 		descriptorWrites[1].dstArrayElement = 0; // Binding index starts at the first element - 0
 		descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; //Define the descriptor type as combined image sampler 
@@ -775,7 +778,7 @@ private:
 		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 		poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
 		poolInfo.pPoolSizes = poolSizes.data();
-		poolInfo.maxSets = 1;
+		poolInfo.maxSets = 2; // THIS MAGIC NUMBER NEEDS INCREASED IF WANTING A NEW TEXTURE
 
 		// Initiate descriptor pool - if fail throw error
 		if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) 
@@ -1707,8 +1710,8 @@ private:
 		// Destroy the texture image view
 		vkDestroyImageView(device, textureImageView, nullptr);
 		// Destory and free texture image object/memory 
-		vkDestroyImage(device, textureImage, nullptr);
-		vkFreeMemory(device, textureImageMemory, nullptr);
+		vkDestroyImage(device, repeatTexture, nullptr);
+		vkFreeMemory(device, repeatTextureMemory, nullptr);
 
 		// Destroy the descriptor pool for the uniform buffers
 		vkDestroyDescriptorPool(device, descriptorPool, nullptr);
@@ -1720,14 +1723,14 @@ private:
 		vkFreeMemory(device, uniformBufferMemory, nullptr);
 
 		// Destory the index buffer
-		vkDestroyBuffer(device, indexBuffer, nullptr);
+		vkDestroyBuffer(device, indexPlane, nullptr);
 		// Free the index buffer memory
-		vkFreeMemory(device, indexBufferMemory, nullptr);
+		vkFreeMemory(device, indexPlaneMemory, nullptr);
 
 		// Destroy the vertex buffer
-		vkDestroyBuffer(device, vertexBuffer, nullptr);
+		vkDestroyBuffer(device, vertexPlane, nullptr);
 		// Free the vertex buffer memory
-		vkFreeMemory(device, vertexBufferMemory, nullptr);
+		vkFreeMemory(device, vertexPlaneMemory, nullptr);
 
 		// Destroy the semaphore
 		vkDestroySemaphore(device, renderFinishedSemaphore, nullptr);
@@ -2348,18 +2351,18 @@ private:
 			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
 			// Get the vertex buffer information
-			VkBuffer vertexBuffers[] = { vertexBuffer };
+			VkBuffer vertexBuffers[] = { vertexPlane };
 			VkBuffer vertexCubeBuffers[] = { vertexCube };
 			// Specify the offset - not existing in this case
 			VkDeviceSize offsets[] = { 0 };
 			// Bind the vertex buffers - commandbuffers, offset, number of bindings, vertexbuffers themselves and offests of the vertex data
 			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
 			// Bind the index buffers
-			vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT16); // VK_INDEX_TYPE_UINT32 - needs to be 16 when using models
+			vkCmdBindIndexBuffer(commandBuffers[i], indexPlane, 0, VK_INDEX_TYPE_UINT16); // VK_INDEX_TYPE_UINT32 - needs to be 16 when using models
 			// Bind the descriptor sets 
-			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &checkedDescriptorSet, 0, nullptr);
 			// Draw the command buffers (vertex count, instanceCount, firstVertex, firstInstance)
-			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(plane.size()), 1, 0, 0, 0);
+			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(planeIndices.size()), 1, 0, 0, 0);
 
 			// Render Cube
 			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexCubeBuffers, offsets);
