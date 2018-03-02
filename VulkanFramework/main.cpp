@@ -174,56 +174,39 @@ struct Vertex
 //	};
 //}
 
-// Position, Colour - data now as one part of vertices
+// Position, Colour, Texcoord - data now as one part of vertices
 const std::vector<Vertex> vertices =
 {
-	// Upper (original) square
-	{ { -0.5f, -0.5f, 0.0f },{ 1.0f, 1.0f, 0.0f }, {1.0f, 0.0f} },
-	{ { 0.5f, -0.5f, 0.0f },{ 0.0f, 0.0f, 1.0f }, { 0.0f, 0.0f } },
-	{ { 0.5f, 0.5f, 0.0f },{ 1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f } },
-	{ { -0.5f, 0.5f, 0.0f },{ 0.0f, 1.0f, 1.0f }, { 1.0f, 1.0f } },
 
-	// Lower square 
-	{ { -0.5f, -0.5f, -1.0f },{ 1.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
-	{ { 0.5f, -0.5f, -1.0f },{ 0.0f, 1.0f, 0.0f },{ 1.0f, 0.0f } },
-	{ { 0.5f, 0.5f, -1.0f },{ 0.0f, 0.0f, 1.0f },{ 1.0f, 1.0f } },
-	{ { -0.5f, 0.5f, -1.0f },{ 1.0f, 1.0f, 1.0f },{ 0.0f, 1.0f } },
-
-	{ { -2.5f, -2.5f, -2.0f },{ 1.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },	
-	{ { 2.5f, -2.5f, -2.0f },{ 0.0f, 1.0f, 0.0f },{ 1.0f, 0.0f } },
-	{ { 2.5f, 2.5f, -2.0f },{ 0.0f, 0.0f, 1.0f },{ 1.0f, 1.0f } },
-	{ { -2.5f, 2.5f, -2.0f },{ 1.0f, 1.0f, 1.0f },{ 0.0f, 1.0f } },
+	{ { -15.0f, 0.0f, -15.0f },{ 1.0f, 1.0f, 1.0f },{ 1.0f, 0.0f } },
+	{ { 15.0f, 0.0f, -15.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
+	{ { 15.0f, 0.0f, 15.0f },{ 1.0f, 1.0f, 1.0f },{ 0.0f, 1.0f } },
+	{ { -15.0f, 0.0f, 15.0f },{ 0.0f, 0.0f, 0.0f },{ 1.0f, 1.0f } },
 };
 
-const std::vector<Vertex> vertices2 =
+const std::vector<Vertex> cubeVertices =
 {
 	// Upper (original) square
-	{ { -0.5f, -0.5f, 3.0f },{ 1.0f, 1.0f, 0.0f },{ 1.0f, 0.0f } },
-	{ { 0.5f, -0.5f, 3.0f },{ 0.0f, 0.0f, 1.0f },{ 0.0f, 0.0f } },
-	{ { 0.5f, 0.5f, 3.0f },{ 1.0f, 0.0f, 0.0f },{ 0.0f, 1.0f } },
-	{ { -0.5f, 0.5f, 3.0f },{ 0.0f, 1.0f, 1.0f },{ 1.0f, 1.0f } },
+	{ { -0.5f, 00.0f, 3.0f },{ 1.0f, 1.0f, 0.0f },{ 1.0f, 0.0f } },
+	{ { 0.5f, 0.0f, 3.0f },{ 0.0f, 0.0f, 1.0f },{ 0.0f, 0.0f } },
+	{ { 0.5f, 1.0f, 3.0f },{ 1.0f, 0.0f, 0.0f },{ 0.0f, 1.0f } },
+	{ { -0.5f, 1.0f, 3.0f },{ 0.0f, 1.0f, 1.0f },{ 1.0f, 1.0f } },
 
 	// Lower square 
-	{ { -0.5f, -0.5f, 2.0f },{ 1.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
-	{ { 0.5f, -0.5f, 2.0f },{ 0.0f, 1.0f, 0.0f },{ 1.0f, 0.0f } },
-	{ { 0.5f, 0.5f, 2.0f },{ 0.0f, 0.0f, 1.0f },{ 1.0f, 1.0f } },
-	{ { -0.5f, 0.5f, 2.0f },{ 1.0f, 1.0f, 1.0f },{ 0.0f, 1.0f } },
+	{ { -0.5f, 0.0f, 2.0f },{ 1.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
+	{ { 0.5f, 0.0f, 2.0f },{ 0.0f, 1.0f, 0.0f },{ 1.0f, 0.0f } },
+	{ { 0.5f, 1.0f, 2.0f },{ 0.0f, 0.0f, 1.0f },{ 1.0f, 1.0f } },
+	{ { -0.5f, 1.0f, 2.0f },{ 1.0f, 1.0f, 1.0f },{ 0.0f, 1.0f } },
 };
 
 // Indices information which is used to draw a square 
-const std::vector<uint16_t> indices = 
+const std::vector<uint16_t> plane = 
 {
-	0, 1, 2, 2, 3, 0, // Top
-	4, 7, 6, 6, 5, 4, // Bottom
-	4, 5, 1, 1, 0, 4, // Sides
-	5, 6, 2, 2, 1, 5, // Sides
-	6, 7, 3, 3, 2, 6, // Sides
-	7, 4, 0, 0, 3, 7, // Sides
-
-	8, 9, 10, 10, 11, 8, // floor
+	//0, 1, 2, 2, 3, 0, // floor
+	3, 2, 1, 1, 0, 3
 };
 
-const std::vector<uint16_t> cube =
+const std::vector<uint16_t> cubeIndices =
 {
 	0, 1, 2, 2, 3, 0, // Top
 	4, 7, 6, 6, 5, 4, // Bottom
@@ -235,13 +218,6 @@ const std::vector<uint16_t> cube =
 
 // Struct which Uniform Buffer Object 
 struct UniformBufferObject 
-{
-	glm::mat4 model;
-	glm::mat4 view;
-	glm::mat4 proj;
-};
-
-struct UniformBufferObject2
 {
 	glm::mat4 model;
 	glm::mat4 view;
@@ -317,16 +293,20 @@ private:
 	// Vertex Buffer object 
 	std::vector<VkBuffer> vectorVB;
 	VkBuffer vertexBuffer;
-	VkBuffer vertexBuffer2;
+	VkBuffer vertexCube;
+	VkBuffer vertexPlane;
 	// Vertex Buffer memory object which holds the memory regarding the vertex buffer 
 	VkDeviceMemory vertexBufferMemory;
-	VkDeviceMemory vertexBufferMemory2;
+	VkDeviceMemory vertexCubeMemory;
+	VkDeviceMemory vertexPlaneMemory;
 	// Index buffer object
 	VkBuffer indexBuffer;
-	VkBuffer indexBuffer2;
+	VkBuffer indexCube;
+	VkDeviceMemory indexPlane;
 	// Vertex Buffer memory object which holds the memory regarding the vertex buffer 
 	VkDeviceMemory indexBufferMemory;
-	VkDeviceMemory indexBufferMemory2;
+	VkDeviceMemory indexCubeMemory;
+	VkDeviceMemory indexPlaneMemory;
 	// Descriptor layout used for specifying the layout for the uniform buffers
 	VkDescriptorSetLayout descriptorSetLayout;
 	// Uniform buffer object which is used to store the uniform buffer
@@ -337,7 +317,6 @@ private:
 	VkDescriptorPool descriptorPool;
 	// Descriptor set which is gets sets from the pool
 	VkDescriptorSet descriptorSet;
-	VkDescriptorSet descriptorSet2;
 	// Object which is used to store texture images 
 	VkImage textureImage;
 	// Texture image memory 
@@ -358,7 +337,7 @@ private:
 		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 		// Free camera for in game
 		freeCam = new AllCamera::free_camera();
-		freeCam->set_Posistion(glm::vec3(1.0f, 0.0f, 10.0f));
+		freeCam->set_Posistion(glm::vec3(10.0f, 10.0f, 10.0f));
 		freeCam->rotate(0.0f, 0.0f);
 		freeCam->set_Target(glm::vec3(0.0f, 0.0f, 0.0f));
 		freeCam->set_projection(glm::quarter_pi<float>(), (float)WIDTH/(float)HEIGHT, 0.1, 1000.0f);
@@ -384,10 +363,10 @@ private:
 		createTextureImageView();
 		createTextureSampler();
 		//loadModel();			// Method used to load model
-		createVertexBuffer();
-		createVertexBuffer2();
-		createIndexBuffer();
-		createIndexBuffer2();
+		createVertexBuffer(vertices, vertexBuffer, vertexBufferMemory);
+		createVertexBuffer(cubeVertices, vertexCube, vertexCubeMemory);
+		createIndexBuffer(plane, indexBuffer, indexBufferMemory);
+		createIndexBuffer(cubeIndices, indexCube, indexCubeMemory);
 		createUniformBuffer();
 		createDescriptorPool();
 		createDescriptorSet();
@@ -849,10 +828,10 @@ private:
 	}
 
 	// Function which handles in index buffer - using the vertex data and various buffers to change a triangle to a square
-	void createIndexBuffer() 
+	void createIndexBuffer(std::vector<uint16_t> shape, VkBuffer &shapeIndexBuffer, VkDeviceMemory &shapeIndexBufferMemory)
 	{
 		// Culculate the buffer size based on the number of incidies 
-		VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+		VkDeviceSize bufferSize = sizeof(shape[0]) * shape.size();
 
 		// Create a staging buffer which will stage the data 
 		VkBuffer stagingBuffer;
@@ -862,41 +841,14 @@ private:
 		// Copying the vertex data to the buffer - done by mapping the buffer memory into the CPU 
 		void* data;
 		vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data); // Map the data to the memory (logical device, staging buffer memory memory, offset, size, specify flags, data)
-		memcpy(data, indices.data(), (size_t)bufferSize); // Memory copy the indicy data to the mapped memory then unmap the memory
+		memcpy(data, shape.data(), (size_t)bufferSize); // Memory copy the indicy data to the mapped memory then unmap the memory
 		vkUnmapMemory(device, stagingBufferMemory);
 
 		// Create a buffer using the index information
-		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
+		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, shapeIndexBuffer, shapeIndexBufferMemory);
 
 		// Copy botht the staging and index buffer 
-		copyBuffer(stagingBuffer, indexBuffer, bufferSize);
-
-		// Destroy and free the staging buffers 
-		vkDestroyBuffer(device, stagingBuffer, nullptr);
-		vkFreeMemory(device, stagingBufferMemory, nullptr);
-	}
-
-	void createIndexBuffer2()
-	{
-		// Culculate the buffer size based on the number of incidies 
-		VkDeviceSize bufferSize = sizeof(cube[0]) * cube.size();
-
-		// Create a staging buffer which will stage the data 
-		VkBuffer stagingBuffer;
-		VkDeviceMemory stagingBufferMemory;
-		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-
-		// Copying the vertex data to the buffer - done by mapping the buffer memory into the CPU 
-		void* data;
-		vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data); // Map the data to the memory (logical device, staging buffer memory memory, offset, size, specify flags, data)
-		memcpy(data, cube.data(), (size_t)bufferSize); // Memory copy the indicy data to the mapped memory then unmap the memory
-		vkUnmapMemory(device, stagingBufferMemory);
-
-		// Create a buffer using the index information
-		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer2, indexBufferMemory2);
-
-		// Copy botht the staging and index buffer 
-		copyBuffer(stagingBuffer, indexBuffer2, bufferSize);
+		copyBuffer(stagingBuffer, shapeIndexBuffer, bufferSize);
 
 		// Destroy and free the staging buffers 
 		vkDestroyBuffer(device, stagingBuffer, nullptr);
@@ -904,10 +856,10 @@ private:
 	}
 
 	// Buffers in Vulkan are regions of memory used for storing arbitrary data that can be read by the graphics card - in this case, storing vertex data
-	void createVertexBuffer() 
+	void createVertexBuffer(std::vector<Vertex> vertexInformation, VkBuffer &shapeVertexBuffer, VkDeviceMemory &shapeVertexBufferMemory)
 	{
 		// Calculate the buffer size based on the number of vertices 
-		VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+		VkDeviceSize bufferSize = sizeof(vertexInformation[0]) * vertexInformation.size();
 		// Create a staging buffer which is used for copying the vertex data. 
 		VkBuffer stagingBuffer;
 		// Staging buffer memory which handles the variable memory size of the staging buffer 
@@ -918,42 +870,14 @@ private:
 		// Copying the vertex data to the buffer - done by mapping the buffer memory into the CPU 
 		void* data; 
 		vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data); // Map the data to the memory (logical device, VB memory, offset, size, specify flags, data)
-		memcpy(data, vertices.data(), (size_t) bufferSize); // Memory copy the vertex data to the mapped memory then unmap the memory
+		memcpy(data, vertexInformation.data(), (size_t) bufferSize); // Memory copy the vertex data to the mapped memory then unmap the memory
 		vkUnmapMemory(device, stagingBufferMemory);
 
 		// Call the create buffer function pass the required vertex information required
-		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
+		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, shapeVertexBuffer, shapeVertexBufferMemory);
 
 		// Copy both buffers to the Device Logical buffer
-		copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
-
-		// Destory and then free the staging buffer
-		vkDestroyBuffer(device, stagingBuffer, nullptr);
-		vkFreeMemory(device, stagingBufferMemory, nullptr);
-	}
-
-	void createVertexBuffer2()
-	{
-		// Calculate the buffer size based on the number of vertices 
-		VkDeviceSize bufferSize = sizeof(vertices2[0]) * vertices2.size();
-		// Create a staging buffer which is used for copying the vertex data. 
-		VkBuffer stagingBuffer;
-		// Staging buffer memory which handles the variable memory size of the staging buffer 
-		VkDeviceMemory stagingBufferMemory;
-		// Call the create buffer function pass the required staging information required
-		createBuffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-
-		// Copying the vertex data to the buffer - done by mapping the buffer memory into the CPU 
-		void* data;
-		vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data); // Map the data to the memory (logical device, VB memory, offset, size, specify flags, data)
-		memcpy(data, vertices2.data(), (size_t)bufferSize); // Memory copy the vertex data to the mapped memory then unmap the memory
-		vkUnmapMemory(device, stagingBufferMemory);
-
-		// Call the create buffer function pass the required vertex information required
-		createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer2, vertexBufferMemory2);
-
-		// Copy both buffers to the Device Logical buffer
-		copyBuffer(stagingBuffer, vertexBuffer2, bufferSize);
+		copyBuffer(stagingBuffer, shapeVertexBuffer, bufferSize);
 
 		// Destory and then free the staging buffer
 		vkDestroyBuffer(device, stagingBuffer, nullptr);
@@ -2425,25 +2349,23 @@ private:
 
 			// Get the vertex buffer information
 			VkBuffer vertexBuffers[] = { vertexBuffer };
-			VkBuffer vertexBuffers2[] = { vertexBuffer2 };
+			VkBuffer vertexCubeBuffers[] = { vertexCube };
 			// Specify the offset - not existing in this case
 			VkDeviceSize offsets[] = { 0 };
 			// Bind the vertex buffers - commandbuffers, offset, number of bindings, vertexbuffers themselves and offests of the vertex data
 			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
-			
 			// Bind the index buffers
 			vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT16); // VK_INDEX_TYPE_UINT32 - needs to be 16 when using models
-			
 			// Bind the descriptor sets 
 			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
-
 			// Draw the command buffers (vertex count, instanceCount, firstVertex, firstInstance)
-			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(plane.size()), 1, 0, 0, 0);
 
-			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers2, offsets);
-			vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer2, 0, VK_INDEX_TYPE_UINT16); // VK_INDEX_TYPE_UINT32 - needs to be 16 when using models
+			// Render Cube
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexCubeBuffers, offsets);
+			vkCmdBindIndexBuffer(commandBuffers[i], indexCube, 0, VK_INDEX_TYPE_UINT16); // VK_INDEX_TYPE_UINT32 - needs to be 16 when using models
 			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
-			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(cube.size()), 1, 0, 0, 0);
+			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(cubeIndices.size()), 1, 0, 0, 0);
 
 			// End the render pass 
 			vkCmdEndRenderPass(commandBuffers[i]);
