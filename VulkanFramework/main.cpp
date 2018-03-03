@@ -45,8 +45,12 @@ const int HEIGHT = 600;
 
 // Files used for the Models
 const std::string MODEL_PATH = "models/sphere.obj"; // Set model
+const std::string MTL_PATH = "models/island.mtl";
 const std::string repeatTexturePath = "textures/repeat.jpg"; // Set texture for model
 const std::string checkedTexturePath = "textures/checks.jpg"; // Set texture for model
+const std::string modelTexturePath = "textures/chalet.jpg"; // Set texture for model
+
+std::int8_t rotationSpeed = 0;
 
 // Enable a range of useful diagnostics layers instead of spefic ones 
 const std::vector<const char*> validationLayers = 
@@ -155,25 +159,25 @@ struct Vertex
 		return attributeDescriptions;
 	}
 
-	//// Helper function used as part of the model loader to set the vertex information - Comment out when not using models
-	//bool operator==(const Vertex& other) const 
-	//{
-	//	return pos == other.pos && color == other.color && texCoord == other.texCoord;
-	//}
+	// Helper function used as part of the model loader to set the vertex information - Comment out when not using models
+	bool operator==(const Vertex& other) const 
+	{
+		return pos == other.pos && color == other.color && texCoord == other.texCoord;
+	}
 };
 
-//namespace std - Comment out when not using models
-//{
-//	template<> struct hash<Vertex> 
-//	{
-//		size_t operator()(Vertex const& vertex) const 
-//		{
-//			return ((hash<glm::vec3>()(vertex.pos) ^
-//				(hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
-//				(hash<glm::vec2>()(vertex.texCoord) << 1);
-//		}
-//	};
-//}
+namespace std //- Comment out when not using models
+{
+	template<> struct hash<Vertex> 
+	{
+		size_t operator()(Vertex const& vertex) const 
+		{
+			return ((hash<glm::vec3>()(vertex.pos) ^
+				(hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
+				(hash<glm::vec2>()(vertex.texCoord) << 1);
+		}
+	};
+}
 
 // Position, Colour, Texcoord - data now as one part of vertices
 const std::vector<Vertex> planeVertices =
@@ -200,12 +204,12 @@ const std::vector<Vertex> cubeVertices =
 };
 
 // Indices information which is used to draw a square 
-const std::vector<uint16_t> planeIndices = 
+const std::vector<uint32_t> planeIndices = 
 {
 	3, 2, 1, 1, 0, 3
 };
 
-const std::vector<uint16_t> cubeIndices =
+const std::vector<uint32_t> cubeIndices =
 {
 	0, 1, 2, 2, 3, 0, // Top
 	4, 7, 6, 6, 5, 4, // Bottom
@@ -287,40 +291,50 @@ private:
 	VkSemaphore imageAvailableSemaphore;
 	VkSemaphore renderFinishedSemaphore;
 	// Vectors which contain the vertices and indices for the model
-	//std::vector<Vertex> vertices;
-	//std::vector<uint32_t> indices;
+	std::vector<Vertex> verticesModel;
+	std::vector<uint32_t> indicesModel;
 	// Vertex Buffer object 
 	std::vector<VkBuffer> vectorVB;
 	VkBuffer vertexCube;
 	VkBuffer vertexPlane;
+	VkBuffer vertexModel;
 	// Vertex Buffer memory object which holds the memory regarding the vertex buffer 
 	VkDeviceMemory vertexCubeMemory;
 	VkDeviceMemory vertexPlaneMemory;
+	VkDeviceMemory vertexModelMemory;
 	// Index buffer object
 	VkBuffer indexCube;
-	VkDeviceMemory indexPlane;
+	VkBuffer indexPlane;
+	VkBuffer indexModel;
 	// Vertex Buffer memory object which holds the memory regarding the vertex buffer 
 	VkDeviceMemory indexCubeMemory;
 	VkDeviceMemory indexPlaneMemory;
+	VkDeviceMemory indexModelMemory;
 	// Descriptor layout used for specifying the layout for the uniform buffers
 	VkDescriptorSetLayout descriptorSetLayout;
 	// Uniform buffer object which is used to store the uniform buffer
 	VkBuffer uniformBuffer;
+	VkBuffer rotatingUniformBuffer;
 	// Uniform buffer object memory 
 	VkDeviceMemory uniformBufferMemory;
+	VkDeviceMemory rotatingUniformBufferMemory;
 	// Descriptor pool object which is used to get descriptor sets
 	VkDescriptorPool descriptorPool;
 	// Descriptor set which is gets sets from the pool
 	VkDescriptorSet descriptorSet;
 	VkDescriptorSet checkedDescriptorSet;
+	VkDescriptorSet modelDescriptorSet;
 	// Object which is used to store texture images 
 	VkImage repeatTexture;
+	VkImage modelTexture;
 	VkImage checkedTexture;
 	// Texture image memory 
 	VkDeviceMemory repeatTextureMemory;
+	VkDeviceMemory modelTextureMemory;
 	VkDeviceMemory checkedTextureMemory;
 	// Image view which holds the texture image 
 	VkImageView textureImageView;
+	VkImageView modelImageView;
 	VkImageView checkedImageView;
 	// Texture sampler object that handles the texture sampler information - regards to how the image is presented - ie repeat or wrapped
 	VkSampler textureSampler;
@@ -363,71 +377,76 @@ private:
 		createTextureImageView(repeatTexture, textureImageView);
 		createTextureImage(checkedTexturePath, checkedTexture, checkedTextureMemory);
 		createTextureImageView(checkedTexture, checkedImageView);
+		createTextureImage(modelTexturePath, modelTexture, modelTextureMemory);
+		createTextureImageView(modelTexture, modelImageView);
 		createTextureSampler();
-		//loadModel();			// Method used to load model
+		loadModel();			// Method used to load model
 		createVertexBuffer(planeVertices, vertexPlane, vertexPlaneMemory);
 		createVertexBuffer(cubeVertices, vertexCube, vertexCubeMemory);
+		createVertexBuffer(verticesModel, vertexModel, vertexModelMemory);
 		createIndexBuffer(planeIndices, indexPlane, indexPlaneMemory);
 		createIndexBuffer(cubeIndices, indexCube, indexCubeMemory);
-		createUniformBuffer();
+		createIndexBuffer(indicesModel, indexModel, indexModelMemory);
+		createUniformBuffer(uniformBuffer, uniformBufferMemory);
+		createUniformBuffer(rotatingUniformBuffer, rotatingUniformBufferMemory);
 		createDescriptorPool();
-		createDescriptorSet(descriptorSet, textureImageView);
-		createDescriptorSet(checkedDescriptorSet, checkedImageView);
+		createDescriptorSet(descriptorSet, textureImageView, rotatingUniformBuffer);
+		createDescriptorSet(checkedDescriptorSet, checkedImageView, uniformBuffer);
+		createDescriptorSet(modelDescriptorSet, modelImageView, uniformBuffer);
 		createCommandBuffers();
 		createSemaphores();
 	}
 
 	// Function which loads a model
-	//void loadModel() 
-	//{
-	//	// Attribute container which holds all of the position, texture coordinates and faces
-	//	tinyobj::attrib_t attrib;
-	//	std::vector<tinyobj::shape_t> shapes; // Shapes
-	//	std::vector<tinyobj::material_t> materials; // The materials
-	//	std::string err; // Any errors or warnings that can occur while the model is in transit - loading...
+	void loadModel() 
+	{
+		// Attribute container which holds all of the position, texture coordinates and faces
+		tinyobj::attrib_t attrib;
+		std::vector<tinyobj::shape_t> shapes; // Shapes
+		std::vector<tinyobj::material_t> materials; // The materials
+		std::string err; // Any errors or warnings that can occur while the model is in transit - loading...
 
-	//	// If the model cannot be loaded then throw an error
-	//	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err, MODEL_PATH.c_str())) 
-	//	{
-	//		throw std::runtime_error(err);
-	//	}
+		// If the model cannot be loaded then throw an error
+		if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err, MODEL_PATH.c_str(), MTL_PATH.c_str())) 
+		{
+			throw std::runtime_error(err);
+		}
 
-	//	// Unordered map which stores all of the unique vertices 
-	//	std::unordered_map<Vertex, uint32_t> uniqueVertices = {};
+		// Unordered map which stores all of the unique vertices 
+		std::unordered_map<Vertex, uint32_t> uniqueVertices = {};
 
-	//	// Iterate over all the shapes which make up the model
-	//	for (const auto& shape : shapes) {
-	//		// For all the incides in the model
-	//		for (const auto& index : shape.mesh.indices) 
-	//		{
-	//			// Find the vertex positions
-	//			Vertex vertex = {};
-	//			vertex.pos = {
-	//				attrib.vertices[3 * index.vertex_index + 0],
-	//				attrib.vertices[3 * index.vertex_index + 1],
-	//				attrib.vertices[3 * index.vertex_index + 2]
-	//			};
+		// Iterate over all the shapes which make up the model
+		for (const auto& shape : shapes) {
+			// For all the incides in the model
+			for (const auto& index : shape.mesh.indices) 
+			{
+				// Find the vertex positions
+				Vertex vertex = {};
+				vertex.pos = {
+					attrib.vertices[3 * index.vertex_index + 0],
+					attrib.vertices[3 * index.vertex_index + 1],
+					attrib.vertices[3 * index.vertex_index + 2]
+				};
 
-	//			// Find the vertex texture coordinates
-	//			vertex.texCoord = {
-	//				attrib.texcoords[2 * index.texcoord_index + 0],
-	//				1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
-	//			};
+				// Find the vertex texture coordinates
+				vertex.texCoord = {
+					attrib.texcoords[2 * index.texcoord_index + 0],
+					1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
+				};
 
-	//			// Set the vertex colour
-	//			vertex.color = { 1.0f, 1.0f, 1.0f };
+				// Set the vertex colour
+				vertex.color = { 1.0f, 1.0f, 1.0f };
 
-	//			//
-	//			if (uniqueVertices.count(vertex) == 0) 
-	//			{
-	//				uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
-	//				vertices.push_back(vertex);
-	//			}
+				if (uniqueVertices.count(vertex) == 0) 
+				{
+					uniqueVertices[vertex] = static_cast<uint32_t>(verticesModel.size());
+					verticesModel.push_back(vertex);
+				}
 
-	//			indices.push_back(uniqueVertices[vertex]);
-	//		}
-	//	}
-	//}
+				indicesModel.push_back(uniqueVertices[vertex]);
+			}
+		}
+	}
 
 	void createDepthResources() 
 	{
@@ -712,7 +731,7 @@ private:
 	}
 
 	// Function which is used to create the descriptor sets from the descriptor pool 
-	void createDescriptorSet(VkDescriptorSet &desSet, VkImageView textureImView)
+	void createDescriptorSet(VkDescriptorSet &desSet, VkImageView textureImView, VkBuffer uniformBuff)
 	{
 		VkDescriptorSetLayout layouts[] = { descriptorSetLayout };
 		// Struct which contains information regarding the sets
@@ -730,7 +749,7 @@ private:
 
 		// Struct specifies the buffer and the region within it that contains the data for the descriptor
 		VkDescriptorBufferInfo bufferInfo = {};
-		bufferInfo.buffer = uniformBuffer;
+		bufferInfo.buffer = uniformBuff;
 		bufferInfo.offset = 0;
 		bufferInfo.range = sizeof(UniformBufferObject);
 
@@ -778,7 +797,7 @@ private:
 		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 		poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
 		poolInfo.pPoolSizes = poolSizes.data();
-		poolInfo.maxSets = 2; // THIS MAGIC NUMBER NEEDS INCREASED IF WANTING A NEW TEXTURE
+		poolInfo.maxSets = 3; // THIS MAGIC NUMBER NEEDS INCREASED IF WANTING A NEW TEXTURE
 
 		// Initiate descriptor pool - if fail throw error
 		if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) 
@@ -788,12 +807,11 @@ private:
 	}
 
 	// Function which updates the uniform buffer with a new transformation every frame 
-	void createUniformBuffer() 
+	void createUniformBuffer(VkBuffer &uniformBuff, VkDeviceMemory &uniformBuffMemory) 
 	{
 		VkDeviceSize bufferSize = sizeof(UniformBufferObject);
-		createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffer, uniformBufferMemory);
+		createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuff, uniformBuffMemory);
 	}
-
 
 	// Function which provides details about every descriptor binding used in the shaders for pipeline creation - MVP
 	void createDescriptorSetLayout() 
@@ -831,7 +849,7 @@ private:
 	}
 
 	// Function which handles in index buffer - using the vertex data and various buffers to change a triangle to a square
-	void createIndexBuffer(std::vector<uint16_t> shape, VkBuffer &shapeIndexBuffer, VkDeviceMemory &shapeIndexBufferMemory)
+	void createIndexBuffer(std::vector<uint32_t> shape, VkBuffer &shapeIndexBuffer, VkDeviceMemory &shapeIndexBufferMemory)
 	{
 		// Culculate the buffer size based on the number of incidies 
 		VkDeviceSize bufferSize = sizeof(shape[0]) * shape.size();
@@ -1567,7 +1585,8 @@ private:
 			glfwPollEvents();
 
 			// Update the uniform buffer to allow for transforms to take place 
-			updateUniformBuffer();
+			updateUniformBuffer(uniformBufferMemory);
+			updateUniformBuffer(rotatingUniformBufferMemory);
 			drawFrame();
 		}
 
@@ -1576,7 +1595,7 @@ private:
 	}
 
 	// Function which is called as part of the main loop which updates geometry
-	void updateUniformBuffer() 
+	void updateUniformBuffer(VkDeviceMemory uniformBuffMemory) 
 	{
 		// Start the time in seconds as the rendering has started with floating point accuracy - required for movement - like delta time
 		static auto startTime = std::chrono::high_resolution_clock::now();
@@ -1587,7 +1606,17 @@ private:
 
 		// Struct which contains the Model view projection matrix information stored in the uniform buffer object
 		UniformBufferObject ubo = {};
-		ubo.model = glm::rotate(glm::mat4(1.0f), dt * glm::radians(90.0f) * 0, glm::vec3(0.0f, 0.0f, 1.0f)); // Multiple radian * time part by 0.01f to go really really slow 
+
+		// If the uniform buffer is the default uniform buffer then dont rotate
+		if (uniformBuffMemory == uniformBufferMemory)
+		{
+			ubo.model = glm::rotate(glm::mat4(1.0f), 0.0f, glm::vec3(0.0f, 0.0f, 1.0f)); // Multiple radian * time part by 0.01f to go really really slow 
+		}
+		else // Else rotate by 90 degrees using delta time
+		{
+			ubo.model = glm::rotate(glm::mat4(1.0f), dt * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		}
+		
 		//ubo.view = glm::lookAt(glm::vec3(4.0f, 4.0f, 4.0f), glm::vec3(0,0,0), glm::vec3(0.0f, 0.0f, 1.0f)); // Camera distance, focus point, up axis
 		//ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f); // 45 degree field of view, aspect ratio, near and far view planes
 		ubo.view = freeCam->get_View();
@@ -1596,9 +1625,9 @@ private:
 
 		// Once the MVP is set, copy the uniform data over
 		void* data;
-		vkMapMemory(device, uniformBufferMemory, 0, sizeof(ubo), 0, &data);
+		vkMapMemory(device, uniformBuffMemory, 0, sizeof(ubo), 0, &data);
 		memcpy(data, &ubo, sizeof(ubo));
-		vkUnmapMemory(device, uniformBufferMemory);
+		vkUnmapMemory(device, uniformBuffMemory);
 	}
 
 	// Method which deals with acquiring an image from the swap chain, execute the command buffer and returns the image to the swap chain for presentation
@@ -1721,6 +1750,8 @@ private:
 		// Destroy and free the uniform buffer/memory
 		vkDestroyBuffer(device, uniformBuffer, nullptr);
 		vkFreeMemory(device, uniformBufferMemory, nullptr);
+		vkDestroyBuffer(device, rotatingUniformBuffer, nullptr);
+		vkFreeMemory(device, rotatingUniformBufferMemory, nullptr);
 
 		// Destory the index buffer
 		vkDestroyBuffer(device, indexPlane, nullptr);
@@ -2351,14 +2382,16 @@ private:
 			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
 			// Get the vertex buffer information
-			VkBuffer vertexBuffers[] = { vertexPlane };
+			VkBuffer vertexPlaneBuffers[] = { vertexPlane };
 			VkBuffer vertexCubeBuffers[] = { vertexCube };
+			VkBuffer vertexModelBuffers[] = { vertexModel };
 			// Specify the offset - not existing in this case
 			VkDeviceSize offsets[] = { 0 };
+
 			// Bind the vertex buffers - commandbuffers, offset, number of bindings, vertexbuffers themselves and offests of the vertex data
-			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexPlaneBuffers, offsets);
 			// Bind the index buffers
-			vkCmdBindIndexBuffer(commandBuffers[i], indexPlane, 0, VK_INDEX_TYPE_UINT16); // VK_INDEX_TYPE_UINT32 - needs to be 16 when using models
+			vkCmdBindIndexBuffer(commandBuffers[i], indexPlane, 0, VK_INDEX_TYPE_UINT32);
 			// Bind the descriptor sets 
 			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &checkedDescriptorSet, 0, nullptr);
 			// Draw the command buffers (vertex count, instanceCount, firstVertex, firstInstance)
@@ -2366,9 +2399,16 @@ private:
 
 			// Render Cube
 			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexCubeBuffers, offsets);
-			vkCmdBindIndexBuffer(commandBuffers[i], indexCube, 0, VK_INDEX_TYPE_UINT16); // VK_INDEX_TYPE_UINT32 - needs to be 16 when using models
+			vkCmdBindIndexBuffer(commandBuffers[i], indexCube, 0, VK_INDEX_TYPE_UINT32); 
 			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
 			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(cubeIndices.size()), 1, 0, 0, 0);
+
+			// Render Model
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexModelBuffers, offsets);
+			vkCmdBindIndexBuffer(commandBuffers[i], indexModel, 0, VK_INDEX_TYPE_UINT32); 
+			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &modelDescriptorSet, 0, nullptr);
+			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(indicesModel.size()), 1, 0, 0, 0);
+
 
 			// End the render pass 
 			vkCmdEndRenderPass(commandBuffers[i]);
