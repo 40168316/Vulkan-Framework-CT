@@ -49,8 +49,17 @@ const std::string MTL_PATH = "models/island.mtl";
 const std::string repeatTexturePath = "textures/repeat.jpg"; // Set texture for model
 const std::string checkedTexturePath = "textures/checks.jpg"; // Set texture for model
 const std::string modelTexturePath = "textures/chalet.jpg"; // Set texture for model
+const std::string topSkyTexturePath = "textures/skyboxes/top.png";
+const std::string bottomSkyTexturePath = "textures/skyboxes/bot.png";
+const std::string leftSkyTexturePath = "textures/skyboxes/left.png";
+const std::string rightSkyTexturePath = "textures/skyboxes/right.png";
+const std::string frontSkyTexturePath = "textures/skyboxes/front.png";
+const std::string backSkyTexturePath = "textures/skyboxes/back.png";
 
-std::int8_t rotationSpeed = 0;
+std::int8_t NUMBEROFSHAPES = 4;
+
+VkImageViewType twoDImageView = VK_IMAGE_VIEW_TYPE_2D;
+VkImageViewType cubeImageView = VK_IMAGE_VIEW_TYPE_CUBE;
 
 // Enable a range of useful diagnostics layers instead of spefic ones 
 const std::vector<const char*> validationLayers = 
@@ -153,7 +162,7 @@ struct Vertex
 		// The other for the texture coordinates
 		attributeDescriptions[2].binding = 0;
 		attributeDescriptions[2].location = 2;
-		attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+		attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT; // Vec2
 		attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
 
 		return attributeDescriptions;
@@ -182,25 +191,40 @@ namespace std //- Comment out when not using models
 // Position, Colour, Texcoord - data now as one part of vertices
 const std::vector<Vertex> planeVertices =
 {
-	{ { -15.0f, 0.0f, -15.0f },{ 1.0f, 1.0f, 1.0f },{ 1.0f, 0.0f } },
-	{ { 15.0f, 0.0f, -15.0f },{ 1.0f, 1.0f, 1.0f },{ 0.0f, 0.0f } },
-	{ { 15.0f, 0.0f, 15.0f },{ 1.0f, 1.0f, 1.0f },{ 0.0f, 1.0f } },
-	{ { -15.0f, 0.0f, 15.0f },{ 1.0f, 1.0f, 1.0f },{ 1.0f, 1.0f } },
+	{ { -15.0f, -0.1f, -15.0f },{ 1.0f, 1.0f, 1.0f },{ 1.0f, 0.0f } },
+	{ { 15.0f, -0.1f, -15.0f },{ 1.0f, 1.0f, 1.0f },{ 0.0f, 0.0f } },
+	{ { 15.0f, -0.1f, 15.0f },{ 1.0f, 1.0f, 1.0f },{ 0.0f, 1.0f } },
+	{ { -15.0f, -0.1f, 15.0f },{ 1.0f, 1.0f, 1.0f },{ 1.0f, 1.0f } },
 };
 
 const std::vector<Vertex> cubeVertices =
 {
 	// Upper (original) square
-	{ { -0.5f, 0.0f, 3.0f },{ 1.0f, 1.0f, 0.0f },{ 1.0f, 0.0f } },
-	{ { 0.5f, 0.0f, 3.0f },{ 0.0f, 0.0f, 1.0f },{ 0.0f, 0.0f } },
-	{ { 0.5f, 1.0f, 3.0f },{ 1.0f, 0.0f, 0.0f },{ 0.0f, 1.0f } },
-	{ { -0.5f, 1.0f, 3.0f },{ 0.0f, 1.0f, 1.0f },{ 1.0f, 1.0f } },
+	{ { 0.0f, 0.0f, 2.0f },{ 1.0f, 1.0f, 0.0f },{ 1.0f, 0.0f } },
+	{ { 1.0f, 0.0f, 2.0f },{ 0.0f, 0.0f, 1.0f },{ 0.0f, 0.0f } },
+	{ { 1.0f, 1.0f, 2.0f },{ 1.0f, 0.0f, 0.0f },{ 0.0f, 1.0f } },
+	{ { 0.0f, 1.0f, 2.0f },{ 0.0f, 1.0f, 1.0f },{ 1.0f, 1.0f } },
 
 	// Lower square 
-	{ { -0.5f, 0.0f, 2.0f },{ 1.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
-	{ { 0.5f, 0.0f, 2.0f },{ 0.0f, 1.0f, 0.0f },{ 1.0f, 0.0f } },
-	{ { 0.5f, 1.0f, 2.0f },{ 0.0f, 0.0f, 1.0f },{ 1.0f, 1.0f } },
-	{ { -0.5f, 1.0f, 2.0f },{ 1.0f, 1.0f, 1.0f },{ 0.0f, 1.0f } },
+	{ { 0.0f, 0.0f, 1.0f },{ 1.0f, 0.0f, 0.0f },{ 0.0f, 1.0f } },
+	{ { 1.0f, 0.0f, 1.0f },{ 0.0f, 1.0f, 0.0f },{ 1.0f, 1.0f } },
+	{ { 1.0f, 1.0f, 1.0f },{ 0.0f, 0.0f, 1.0f },{ 1.0f, 0.0f } },
+	{ { 0.0f, 1.0f, 1.0f },{ 1.0f, 1.0f, 1.0f },{ 0.0f, 0.0f } },
+};
+
+const std::vector<Vertex> skyboxVertices =
+{
+	// Upper (original) square
+	{ { -50.0f, -50.0f, 50.0f },{ 1.0f, 1.0f, 0.0f },{ 1.0f, 0.0f } },
+	{ { 50.0f, -50.0f, 50.0f },{ 0.0f, 0.0f, 1.0f },{ 0.0f, 0.0f } },
+	{ { 50.0f, 50.0f, 50.0f },{ 1.0f, 0.0f, 0.0f },{ 0.0f, 1.0f } },
+	{ { -50.0f, 50.0f, 50.0f },{ 0.0f, 1.0f, 1.0f },{ 1.0f, 1.0f } },
+
+	// Lower square 
+	{ { -50.0f, -50.0f, -50.0f },{ 1.0f, 0.0f, 0.0f },{ 0.0f, 1.0f } },
+	{ { 50.0f, -50.0f, -50.0f },{ 0.0f, 1.0f, 0.0f },{ 1.0f, 1.0f } },
+	{ { 50.0f, 50.0f, -50.0f },{ 0.0f, 0.0f, 1.0f },{ 1.0f, 0.0f } },
+	{ { -50.0f, 50.0f, -50.0f },{ 1.0f, 1.0f, 1.0f },{ 0.0f, 0.0f } },
 };
 
 // Indices information which is used to draw a square 
@@ -219,6 +243,16 @@ const std::vector<uint32_t> cubeIndices =
 	7, 4, 0, 0, 3, 7, // Sides
 };
 
+const std::vector<uint32_t> skyboxIndices =
+{
+	3, 2, 1, 1, 0, 3, // Top
+	7, 4, 5, 5, 6, 7, // Bottom
+	5, 4, 0, 0, 1, 5, // Sides - New Bottom
+	6, 5, 1, 1, 2, 6, // Sides
+	7, 6, 2, 2, 3, 7, // Sides - New Top
+	4, 7, 3, 3, 0, 4, // Sides
+};
+
 // Struct which Uniform Buffer Object 
 struct UniformBufferObject 
 {
@@ -233,8 +267,8 @@ class VulkanObjects
 	// Public modifier - can be seen by all
 public:
 	AllCamera::free_camera* freeCam;
-	// Create vector to apply to current cam pos
-	glm::vec3 freeCamPos = glm::vec3(2.0f, 2.0f, 2.0f);
+	// Create vector to apply to current cam pos - just an initial postion
+	glm::vec3 freeCamPos = glm::vec3(0.0f, 0.0f, 0.0f);
 	double cursor_x = 0.0, cursor_y = 0.0;
 	float cameraSpeed = 0.001f;
 	
@@ -283,6 +317,7 @@ private:
 	VkRenderPass renderPass;
 	// Member variable which stores thge graphics pipeline
 	VkPipeline graphicsPipeline;
+	VkPipeline skyboxGraphicsPipeline;
 	// Member variable which manage tge memory that is used to store the buffers and command buffers are allocated from them
 	VkCommandPool commandPool;
 	// Vector of command buffers that are executed by submitting them on one of the device queues
@@ -291,25 +326,29 @@ private:
 	VkSemaphore imageAvailableSemaphore;
 	VkSemaphore renderFinishedSemaphore;
 	// Vectors which contain the vertices and indices for the model
-	std::vector<Vertex> verticesModel;
-	std::vector<uint32_t> indicesModel;
+	std::vector<Vertex> modelVertices;
+	std::vector<uint32_t> modelIndices;
 	// Vertex Buffer object 
 	std::vector<VkBuffer> vectorVB;
 	VkBuffer vertexCube;
 	VkBuffer vertexPlane;
 	VkBuffer vertexModel;
+	VkBuffer vertexSkybox;
 	// Vertex Buffer memory object which holds the memory regarding the vertex buffer 
 	VkDeviceMemory vertexCubeMemory;
 	VkDeviceMemory vertexPlaneMemory;
 	VkDeviceMemory vertexModelMemory;
+	VkDeviceMemory vertexSkyboxMemory;
 	// Index buffer object
 	VkBuffer indexCube;
 	VkBuffer indexPlane;
 	VkBuffer indexModel;
+	VkBuffer indexSkybox;
 	// Vertex Buffer memory object which holds the memory regarding the vertex buffer 
 	VkDeviceMemory indexCubeMemory;
 	VkDeviceMemory indexPlaneMemory;
 	VkDeviceMemory indexModelMemory;
+	VkDeviceMemory indexSkyboxMemory;
 	// Descriptor layout used for specifying the layout for the uniform buffers
 	VkDescriptorSetLayout descriptorSetLayout;
 	// Uniform buffer object which is used to store the uniform buffer
@@ -324,21 +363,24 @@ private:
 	VkDescriptorSet descriptorSet;
 	VkDescriptorSet checkedDescriptorSet;
 	VkDescriptorSet modelDescriptorSet;
+	VkDescriptorSet skyboxDescriptorSet;
 	// Object which is used to store texture images 
 	VkImage repeatTexture;
 	VkImage modelTexture;
 	VkImage checkedTexture;
+	VkImage frontSkyTexture, backSkyTexture, leftSkyTexture, rightSkyTexture, topSkyTexture, bottomSkyTexture;
 	// Texture image memory 
 	VkDeviceMemory repeatTextureMemory;
 	VkDeviceMemory modelTextureMemory;
 	VkDeviceMemory checkedTextureMemory;
+	VkDeviceMemory frontSkyTextureMemory, backSkyTextureMemory, leftSkyTextureMemory, rightSkyTextureMemory, topSkyTextureMemory, bottomSkyTextureMemory;
 	// Image view which holds the texture image 
 	VkImageView textureImageView;
 	VkImageView modelImageView;
 	VkImageView checkedImageView;
+	VkImageView skyboxImageView;
 	// Texture sampler object that handles the texture sampler information - regards to how the image is presented - ie repeat or wrapped
 	VkSampler textureSampler;
-	VkSampler checkedSampler;
 	// Depth image - like a colour attachment and defines the fepth of the images
 	VkImage depthImage;
 	// Depth image memory
@@ -369,30 +411,43 @@ private:
 		createImageViews();
 		createRenderPass();
 		createDescriptorSetLayout();
-		createGraphicsPipeline();
+		createGraphicsPipeline("shaders/vert.spv", "shaders/frag.spv");
+		createSkyboxGraphicsPipeline("shaders/skyVert.spv", "shaders/skyFrag.spv");
 		createCommandPool();
 		createDepthResources();
 		createFramebuffers();
-		createTextureImage(repeatTexturePath, repeatTexture, repeatTextureMemory);
-		createTextureImageView(repeatTexture, textureImageView);
+		createTextureImage(repeatTexturePath, repeatTexture, repeatTextureMemory); // Load repeat texture
+		createTextureImageView(repeatTexture, textureImageView, twoDImageView); // Create repeat texture view
 		createTextureImage(checkedTexturePath, checkedTexture, checkedTextureMemory);
-		createTextureImageView(checkedTexture, checkedImageView);
+		createTextureImageView(checkedTexture, checkedImageView, twoDImageView);
 		createTextureImage(modelTexturePath, modelTexture, modelTextureMemory);
-		createTextureImageView(modelTexture, modelImageView);
+		createTextureImageView(modelTexture, modelImageView, twoDImageView);
+		// Skybox images 
+		// Top
+		createTextureImage(topSkyTexturePath, topSkyTexture, topSkyTextureMemory);
+		createTextureImage(bottomSkyTexturePath, bottomSkyTexture, bottomSkyTextureMemory);
+		createTextureImage(leftSkyTexturePath, leftSkyTexture, leftSkyTextureMemory);
+		createTextureImage(rightSkyTexturePath, rightSkyTexture, rightSkyTextureMemory);
+		createTextureImage(frontSkyTexturePath, frontSkyTexture, frontSkyTextureMemory);
+		createTextureImage(backSkyTexturePath, backSkyTexture, backSkyTextureMemory);
+		createCubeTextureImageView(topSkyTexture, bottomSkyTexture, leftSkyTexture, rightSkyTexture, frontSkyTexture, backSkyTexture, skyboxImageView, twoDImageView);
 		createTextureSampler();
 		loadModel();			// Method used to load model
 		createVertexBuffer(planeVertices, vertexPlane, vertexPlaneMemory);
 		createVertexBuffer(cubeVertices, vertexCube, vertexCubeMemory);
-		createVertexBuffer(verticesModel, vertexModel, vertexModelMemory);
+		createVertexBuffer(modelVertices, vertexModel, vertexModelMemory);
+		createVertexBuffer(skyboxVertices, vertexSkybox, vertexSkyboxMemory);
 		createIndexBuffer(planeIndices, indexPlane, indexPlaneMemory);
 		createIndexBuffer(cubeIndices, indexCube, indexCubeMemory);
-		createIndexBuffer(indicesModel, indexModel, indexModelMemory);
+		createIndexBuffer(modelIndices, indexModel, indexModelMemory);
+		createIndexBuffer(skyboxIndices, indexSkybox, indexSkyboxMemory);
 		createUniformBuffer(uniformBuffer, uniformBufferMemory);
 		createUniformBuffer(rotatingUniformBuffer, rotatingUniformBufferMemory);
 		createDescriptorPool();
-		createDescriptorSet(descriptorSet, textureImageView, rotatingUniformBuffer);
+		createDescriptorSet(descriptorSet, textureImageView, uniformBuffer);
 		createDescriptorSet(checkedDescriptorSet, checkedImageView, uniformBuffer);
 		createDescriptorSet(modelDescriptorSet, modelImageView, uniformBuffer);
+		createDescriptorSet(skyboxDescriptorSet, skyboxImageView, uniformBuffer);
 		createCommandBuffers();
 		createSemaphores();
 	}
@@ -439,11 +494,11 @@ private:
 
 				if (uniqueVertices.count(vertex) == 0) 
 				{
-					uniqueVertices[vertex] = static_cast<uint32_t>(verticesModel.size());
-					verticesModel.push_back(vertex);
+					uniqueVertices[vertex] = static_cast<uint32_t>(modelVertices.size());
+					modelVertices.push_back(vertex);
 				}
 
-				indicesModel.push_back(uniqueVertices[vertex]);
+				modelIndices.push_back(uniqueVertices[vertex]);
 			}
 		}
 	}
@@ -455,7 +510,7 @@ private:
 
 		// Call the create image and depth image view functions now that we know what formats of depth buffer are supported 
 		createImage(swapChainExtent.width, swapChainExtent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
-		depthImageView = createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+		depthImageView = createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, twoDImageView);
 
 		// Transition to the image layout passing the depth image and format information to produce the depth buffering effect
 		transitionImageLayout(depthImage, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
@@ -533,19 +588,51 @@ private:
 	}
 
 	// Function which is used to create a texture view for an image - used as part of the graphics pipeline and in the swap chain process 
-	void createTextureImageView(VkImage texture, VkImageView &textureImView) 
+	void createTextureImageView(VkImage texture, VkImageView &textureImView, VkImageViewType &imageType)
 	{
-		textureImView = createImageView(texture, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
+		textureImView = createImageView(texture, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, imageType);
+	}
+
+	void createCubeTextureImageView(VkImage texture1, VkImage texture2, VkImage texture3, VkImage texture4, VkImage texture5, VkImage texture6, VkImageView &textureImView, VkImageViewType &imageType)
+	{
+		textureImView = createCubeImageView(texture1, texture2, texture3, texture4, texture5, texture6, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT, imageType);
 	}
 
 	// Function which creates and returns an image view
-	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags)
+	VkImageView createCubeImageView(VkImage image1, VkImage image2, VkImage image3, VkImage image4, VkImage image5, VkImage image6, VkFormat format, VkImageAspectFlags aspectFlags, VkImageViewType &imageType)
+	{
+		// Struct which contains information regarding the creation of the image view 
+		VkImageViewCreateInfo viewInfo = {};
+		viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO; // Set struct type
+		viewInfo.image = image1, image2, image3, image4, image5, image6; // Image to image
+		viewInfo.viewType = imageType; // Image dimensions to one
+		viewInfo.format = format; // Format to format 
+		viewInfo.subresourceRange.aspectMask = aspectFlags;
+		viewInfo.subresourceRange.baseMipLevel = 0;
+		viewInfo.subresourceRange.levelCount = 1;
+		viewInfo.subresourceRange.baseArrayLayer = 0;
+		viewInfo.subresourceRange.layerCount = 6;
+
+		// Image view object
+		VkImageView imageView;
+		// Initiate the image view - if not successful throw an error
+		if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS)
+		{
+			throw std::runtime_error("failed to create texture image view!");
+		}
+
+		// Return the image view 
+		return imageView;
+	}
+
+	// Function which creates and returns an image view
+	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, VkImageViewType &imageType)
 	{
 		// Struct which contains information regarding the creation of the image view 
 		VkImageViewCreateInfo viewInfo = {};
 		viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO; // Set struct type
 		viewInfo.image = image; // Image to image
-		viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D; // Image dimensions to one
+		viewInfo.viewType = imageType; // Image dimensions to one
 		viewInfo.format = format; // Format to format 
 		viewInfo.subresourceRange.aspectMask = aspectFlags;
 		viewInfo.subresourceRange.baseMipLevel = 0;
@@ -788,16 +875,16 @@ private:
 		// Array of descriptor pools 
 		std::array<VkDescriptorPoolSize, 2> poolSizes = {};
 		poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; // Pool 0 to uniform buffers
-		poolSizes[0].descriptorCount = 1;
+		poolSizes[0].descriptorCount = 2;
 		poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; // Pool 1 to image sampler
-		poolSizes[1].descriptorCount = 1;
+		poolSizes[1].descriptorCount = 2;
 
 		// Struct which contains information regarding the sets in the pool
 		VkDescriptorPoolCreateInfo poolInfo = {};
 		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 		poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
 		poolInfo.pPoolSizes = poolSizes.data();
-		poolInfo.maxSets = 3; // THIS MAGIC NUMBER NEEDS INCREASED IF WANTING A NEW TEXTURE
+		poolInfo.maxSets = NUMBEROFSHAPES; // THIS MAGIC NUMBER NEEDS INCREASED IF WANTING A NEW TEXTURE
 
 		// Initiate descriptor pool - if fail throw error
 		if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) 
@@ -1175,7 +1262,7 @@ private:
 		// Loop which iterates over all the swap chain images 
 		for (uint32_t i = 0; i < swapChainImages.size(); i++) 
 		{
-			swapChainImageViews[i] = createImageView(swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+			swapChainImageViews[i] = createImageView(swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT, twoDImageView);
 		}
 	}
 
@@ -1195,7 +1282,8 @@ private:
 		// The render pass is recreated because it depends on the format of the swap chain images - rare but check just incase
 		createRenderPass();
 		// Recreate the graphics pipeline due to the fact the viewport and scissor size may have been changed hence rebuilidng is required 
-		createGraphicsPipeline();
+		createGraphicsPipeline("shaders/vert.spv", "shaders/frag.spv");
+		createSkyboxGraphicsPipeline("shaders/vert.spv", "shaders/frag.spv");
 		// Recreate the depth buffers
 		createDepthResources();
 		// Recreate all buffers as they are based on the swap chain images 
@@ -1222,6 +1310,7 @@ private:
 		
 		// Destroy the Graphics Pipeline and all information required for the pipeline - reverse order from how it was built
 		vkDestroyPipeline(device, graphicsPipeline, nullptr);
+		vkDestroyPipeline(device, skyboxGraphicsPipeline, nullptr);
 		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 		vkDestroyRenderPass(device, renderPass, nullptr);
 
@@ -1775,6 +1864,7 @@ private:
 		}
 		// Destroy the graphics pipeline 
 		vkDestroyPipeline(device, graphicsPipeline, nullptr);
+		vkDestroyPipeline(device, skyboxGraphicsPipeline, nullptr);
 		// Destroy the pipeline
 		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 		// Destory the render pass 
@@ -2074,11 +2164,180 @@ private:
 	}
 
 	// Method which creates the graphics pipeline
-	void createGraphicsPipeline() 
+	void createSkyboxGraphicsPipeline(std::string vertPath, std::string fragPath)
 	{
 		// Read the vertex and fragment shaders into the applicaiton 
-		auto vertShaderCode = readFile("shaders/vert.spv");
-		auto fragShaderCode = readFile("shaders/frag.spv");
+		auto vertShaderCode = readFile(vertPath);
+		auto fragShaderCode = readFile(fragPath);
+
+		// Vertex and fragment shader modules which wraps the shader code into a shader module 
+		VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
+		VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
+
+		// Create a shader stage which links the shaders to each other and give them a purpose
+		VkPipelineShaderStageCreateInfo vertShaderStageInfo = {};
+		vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+		vertShaderStageInfo.module = vertShaderModule; // Specify the mode to the shader - the link 
+		vertShaderStageInfo.pName = "main";
+
+		VkPipelineShaderStageCreateInfo fragShaderStageInfo = {};
+		fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+		fragShaderStageInfo.module = fragShaderModule; // Link to the fragment module 
+		fragShaderStageInfo.pName = "main";
+
+		// A struct which contains both the vertex and fragment shader stage structs 
+		VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+
+		// Vertex Input - function descibes the format of the vertex data - bindings = spacing between the data and if data is per pixel or per instance 
+		// Attribute description - type of attribute passed to the vertex shader which binding to load them from and the offset 
+		VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
+		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+		// Get the binding and attribute information setup in the vertex struct
+		auto bindingDescription = Vertex::getBindingDescription();
+		auto attributeDescriptions = Vertex::getAttributeDescriptions();
+
+		vertexInputInfo.vertexBindingDescriptionCount = 1;
+		vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+		vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+		vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+
+		// Input assemby struct which describes two things: what kind of geometry will be drawn from the vertices and if primitive restart should be enabled
+		VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
+		inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+		inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST; // Triangle from every 3 vertices without reuse
+		inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+		// A viewport basically describes the region of the framebuffer that the output will be rendered to
+		VkViewport viewport = {};
+		viewport.x = 0.0f; // From 0,
+		viewport.y = 0.0f; // 0 
+		viewport.width = (float)swapChainExtent.width; // To width,
+		viewport.height = (float)swapChainExtent.height; // Height - ie fullscreen 
+		viewport.minDepth = 0.0f; // Lowest possible value
+		viewport.maxDepth = 1.0f; // Highest possible value 
+
+								  // No scissoring so specify a rectangle that covers the framebuffer entriely
+		VkRect2D scissor = {};
+		scissor.offset = { 0, 0 };
+		scissor.extent = swapChainExtent;
+
+		// Viewport State = combined viewport (region of framebuffer reneder too) and scissor rectangle 
+		// Struct which creates a viewport state by referncing the viewports and scissors - counts are at one as some gfx cards support multiple viewports at once 
+		VkPipelineViewportStateCreateInfo viewportState = {};
+		viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+		viewportState.viewportCount = 1;
+		viewportState.pViewports = &viewport;
+		viewportState.scissorCount = 1;
+		viewportState.pScissors = &scissor;
+
+		// Rasterizer takes the geometry that is shaped by the vertices from the vertex shader and turns it into fragments to be colored by the fragment shader
+		VkPipelineRasterizationStateCreateInfo rasterizer = {};
+		rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+		// If depthClampEnable is set to VK_TRUE, then fragments that are beyond the near and far planes are clamped to them
+		rasterizer.depthClampEnable = VK_FALSE;
+		// If rasterizerDiscardEnable is set to VK_TRUE, then geometry never passes through the rasterizer stage. This basically disables any output to the framebuffer.
+		rasterizer.rasterizerDiscardEnable = VK_FALSE;
+		// The polygonMode determines how fragments are generated for geometry. 
+		rasterizer.polygonMode = VK_POLYGON_MODE_FILL; // fill the area of the polygon with fragments
+													   //rasterizer.polygonMode = VK_POLYGON_MODE_LINE; // polygon edges are drawn as lines
+													   //rasterizer.polygonMode = VK_POLYGON_MODE_POINT; // polygon vertices are drawn as points
+													   // The lineWidth member is straightforward, it describes the thickness of lines in terms of number of fragments.
+		rasterizer.lineWidth = 1.0f;
+		// The cullMode variable determines the type of face culling to use
+		rasterizer.cullMode = VK_CULL_MODE_BACK_BIT; // Currently cullling the back face 
+													 // The frontFace variable specifies the vertex order for faces to be considered front-facing and can be clockwise or counterclockwise
+		rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+		// Depth values is not used so set to false 
+		rasterizer.depthBiasEnable = VK_FALSE;
+
+		// Multisampling which is one of the ways to perform anti-aliasing
+		VkPipelineMultisampleStateCreateInfo multisampling = {};
+		multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+		multisampling.sampleShadingEnable = VK_FALSE; // Set to false as multisampling is not used 
+		multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+		// Depth Stencil which is used as part of the depth buffer 
+		VkPipelineDepthStencilStateCreateInfo depthStencil = {};
+		depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO; // Define struct type
+		depthStencil.depthTestEnable = VK_TRUE; // Set the depth of new fragments should be compared to the depth buffer to see if they should be discarded
+		depthStencil.depthWriteEnable = VK_TRUE; // Set the new depth of fragments that pass the depth test should actually be written to the depth buffer
+		depthStencil.depthCompareOp = VK_COMPARE_OP_LESS; // Specifies the comparison that is performed to keep or discard fragments
+		depthStencil.depthBoundsTestEnable = VK_FALSE; // Set additional optional bound test to false
+		depthStencil.stencilTestEnable = VK_FALSE; // Set the additional optional stencil test to false also
+
+												   // Colour Blending is after the fragment shader has returned a color, it needs to be combined with the color that is already in the framebuffer.
+												   // This struct contains the configuration per attached framebuffer
+		VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
+		colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+		colorBlendAttachment.blendEnable = VK_FALSE;
+		colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE; // Optional
+		colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
+		colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD; // Optional
+		colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE; // Optional
+		colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
+		colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD; // Optional
+
+															 // This struct references the array of structures for all of the framebuffers and 
+															 // allows you to set blend constants that you can use as blend factors in the aforementioned calculations.
+		VkPipelineColorBlendStateCreateInfo colorBlending = {};
+		colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+		colorBlending.logicOpEnable = VK_FALSE;
+		colorBlending.logicOp = VK_LOGIC_OP_COPY;
+		colorBlending.attachmentCount = 1;
+		colorBlending.pAttachments = &colorBlendAttachment;
+		colorBlending.blendConstants[0] = 0.0f;
+		colorBlending.blendConstants[1] = 0.0f;
+		colorBlending.blendConstants[2] = 0.0f;
+		colorBlending.blendConstants[3] = 0.0f;
+
+		// Pipeline Layout - stores different uniform values which can be changed at drawing time to alter the behaviour of shaders without recreation
+		VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		pipelineLayoutInfo.setLayoutCount = 1;
+		pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+
+		// Initiate the pipeline layout using the struct above - if not successful throw error 
+		if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
+		{
+			throw std::runtime_error("failed to create pipeline layout!");
+		}
+
+		// Struct which pulls all the above structs together to make the graphics pipeline 
+		VkGraphicsPipelineCreateInfo pipelineInfo = {};
+		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+		pipelineInfo.stageCount = 2;
+		pipelineInfo.pStages = shaderStages;
+		pipelineInfo.pVertexInputState = &vertexInputInfo;
+		pipelineInfo.pInputAssemblyState = &inputAssembly;
+		pipelineInfo.pViewportState = &viewportState;
+		pipelineInfo.pRasterizationState = &rasterizer;
+		pipelineInfo.pMultisampleState = &multisampling;
+		pipelineInfo.pDepthStencilState = &depthStencil;
+		pipelineInfo.pColorBlendState = &colorBlending;
+		pipelineInfo.layout = pipelineLayout;
+		pipelineInfo.renderPass = renderPass;
+		pipelineInfo.subpass = 0;
+		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+
+		// Initiate the graphics pipeline - if not successful throw an error 
+		if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &skyboxGraphicsPipeline) != VK_SUCCESS)
+		{
+			throw std::runtime_error("failed to create graphics pipeline!");
+		}
+
+		// Destroy both the vertex and shader modules when the pipeline is exited 
+		vkDestroyShaderModule(device, fragShaderModule, nullptr);
+		vkDestroyShaderModule(device, vertShaderModule, nullptr);
+	}
+
+	// Method which creates the graphics pipeline
+	void createGraphicsPipeline(std::string vertPath, std::string fragPath) 
+	{
+		// Read the vertex and fragment shaders into the applicaiton 
+		auto vertShaderCode = readFile(vertPath);
+		auto fragShaderCode = readFile(fragPath);
 
 		// Vertex and fragment shader modules which wraps the shader code into a shader module 
 		VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
@@ -2207,7 +2466,6 @@ private:
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		pipelineLayoutInfo.setLayoutCount = 1;
 		pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
-
 
 		// Initiate the pipeline layout using the struct above - if not successful throw error 
 		if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) 
@@ -2381,10 +2639,11 @@ private:
 			// Command buffer to record the command to, pipeline object is a graphics pipeline, 
 			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
-			// Get the vertex buffer information
+			// Get the vertex buffer information convert from vk buffer to vk buffer []
 			VkBuffer vertexPlaneBuffers[] = { vertexPlane };
 			VkBuffer vertexCubeBuffers[] = { vertexCube };
 			VkBuffer vertexModelBuffers[] = { vertexModel };
+			VkBuffer vertexSkyboxBuffers[] = { vertexSkybox };
 			// Specify the offset - not existing in this case
 			VkDeviceSize offsets[] = { 0 };
 
@@ -2407,8 +2666,17 @@ private:
 			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexModelBuffers, offsets);
 			vkCmdBindIndexBuffer(commandBuffers[i], indexModel, 0, VK_INDEX_TYPE_UINT32); 
 			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &modelDescriptorSet, 0, nullptr);
-			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(indicesModel.size()), 1, 0, 0, 0);
+			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(modelIndices.size()), 1, 0, 0, 0);
+			
+			// Skybox Cube
+			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &skyboxDescriptorSet, 0, nullptr);
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexSkyboxBuffers, offsets);
+			vkCmdBindIndexBuffer(commandBuffers[i], indexSkybox, 0, VK_INDEX_TYPE_UINT32);
+			//vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, skyboxGraphicsPipeline);
+			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(skyboxIndices.size()), 1, 0, 0, 0);
 
+			//skybox.get_transform().position = freecam.get_position();
+			//skyboxVertices
 
 			// End the render pass 
 			vkCmdEndRenderPass(commandBuffers[i]);
