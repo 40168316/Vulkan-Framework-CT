@@ -33,4 +33,3 @@ namespace AllCamera
 			void move(const glm::vec3 &translation);
 	};
 }
-	

@@ -89,6 +89,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)\include\GLFW\glfw-3.2.1.bin.WIN32\include;$(ProjectDir)\include\GLM\glm;$(ProjectDir)\include\Vulkan\1.0.54.0\Include;$(ProjectDir)\include\STBIMAGE;$(ProjectDir)\include\TinyOBJ;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OpenMPSupport>true</OpenMPSupport>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -148,12 +149,26 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="CameraManager.cpp" />
+    <ClCompile Include="CleanUpManager.cpp" />
     <ClCompile Include="free_camera.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="SceneManager.cpp" />
+    <ClCompile Include="target_camera.cpp" />
+    <ClCompile Include="FrameworkSingleton.cpp" />
+    <ClCompile Include="VulkanManager.cpp" />
+    <ClCompile Include="WindowManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="CameraManager.h" />
+    <ClInclude Include="CleanUpManager.h" />
     <ClInclude Include="free_camera.h" />
+    <ClInclude Include="SceneManager.h" />
+    <ClInclude Include="target_camera.h" />
+    <ClInclude Include="FrameworkSingleton.h" />
+    <ClInclude Include="VulkanManager.h" />
+    <ClInclude Include="WindowManager.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

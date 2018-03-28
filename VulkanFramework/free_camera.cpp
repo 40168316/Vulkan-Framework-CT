@@ -1,5 +1,6 @@
 #include "free_camera.h"
 #include <iostream>
+
 namespace AllCamera
 {
 	void free_camera::update(float delta_time)
