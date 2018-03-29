@@ -237,7 +237,7 @@ void VulkanManager::loadModel(std::string modelPath, std::vector<Vertex> &modelV
 
 	for (const auto& shape : shapes) 
 	{
-#pragma omp parallel for num_threads(num_threadss) schedule(static, 8)
+//#pragma omp parallel for num_threads(num_threadss) schedule(static, 8)
 		// For all the incides in the model
 		for (const auto& index : shape.mesh.indices)
 		{
